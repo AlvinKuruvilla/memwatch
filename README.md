@@ -309,6 +309,21 @@ Planned as a separate backend later.
 
 ---
 
+## 🔢 Exit Codes
+
+`memwatch` uses specific exit codes to communicate results, particularly useful for CI/CD integration:
+
+| Exit Code | Meaning |
+|-----------|---------|
+| `0` | Success - job completed, no limits exceeded |
+| `1` | General error (command failed, invalid arguments, file I/O error) |
+| `10` | Total RSS limit exceeded (future: `--max-total-rss`) |
+| `11` | Per-process RSS limit exceeded (future: `--max-per-proc-rss`) |
+
+Additional exit codes may be added for future features like leak detection thresholds.
+
+---
+
 ## 🗺 Roadmap
 
 ### v1.0 ✅ Complete
@@ -327,24 +342,72 @@ Planned as a separate backend later.
 - [x] Time-series export (timeline.csv)
 - [x] Edge case handling (defunct processes, quick-exit commands)
 - [x] Helpful error messages and suggestions
-- [ ] Optional RAM usage graph via CLI flag
 - [ ] Package for crates.io
 - [ ] Homebrew formula
 - [ ] Man page documentation
 
-### v2.0 (Future)
+### v2.0 (Core Profiling Enhancements)
 
+- [ ] **Threshold alerts** - Memory guardrails for CI/CD
+  - `--max-total-rss <bytes>` and `--max-per-proc-rss <bytes>` flags
+  - Enforce limits and exit with specific codes (10/11) when exceeded
+  - Support human units (e.g., `512M`, `8G`)
+- [ ] **Run comparison** - Regression detection between runs
+  - `memwatch compare base.json candidate.json` command
+  - Detect memory increases with configurable thresholds
+  - Perfect for CI pipelines to catch regressions
+- [ ] **Process grouping** - Aggregate memory by command/exe
+  - `--group-by command/exe/ppid` flag
+  - Show total memory per group (e.g., all rustc processes)
+  - Helps understand memory distribution in complex workloads
+- [ ] **Improved short-lived process detection**
+  - Better capture of rapid fork/exit patterns
+  - Optional startup burst sampling mode
 - [ ] libproc backend for faster macOS sampling
 - [ ] Windows backend
-- [ ] Improved detection of short-lived worker processes
-- [ ] Memory usage flamegraph visualization
 
-### v3.0 (Future)
+### v3.0 (Advanced Features)
 
-- [ ] `compare` command for regression analysis
-- [ ] CI assistant scripts and GitHub Actions
-- [ ] Interactive TUI mode
-- [ ] Memory leak detection
+- [ ] **Leak detection heuristics** - Detect potential memory leaks
+  - Analyze RSS growth trends over job lifetime
+  - Configurable thresholds (`--leak-min-growth`, `--leak-min-duration`)
+  - Conservative defaults to avoid false positives (50% growth, 60s minimum)
+- [ ] **`memwatch view`** - Post-run visualizer
+  - Analyze completed runs with rich visualizations
+  - `memwatch view results.json` or `memwatch view timeline.csv`
+  - Beautiful ASCII graphs for terminal display
+  - Optional full TUI mode with interactive navigation
+- [ ] **Live progress mode** - Real-time job monitoring
+  - `--live` flag for simple single-line progress updates
+  - Shows current RSS, peak RSS, and top process during execution
+  - Non-intrusive, works over SSH and in CI logs
+- [ ] **Inline graphs** - Visual summaries in output
+  - `--graph` flag to add ASCII graphs to run summary
+  - Small memory-over-time visualization for quick insights
+- [ ] **CI integration helpers** - GitHub Actions and automation
+  - Example workflow files for catching regressions
+  - Shell/Python wrappers for common CI patterns
+  - Optional `memwatch ci-check` convenience command
+- [ ] **Plugin/hook API** - Extensibility for custom workflows
+  - `--post-run-cmd` flag to execute custom commands after profiling
+  - Receive JSON output path as argument
+  - Integrate with Prometheus, Grafana, custom dashboards, etc.
+
+### 🔬 Future Research
+
+These features represent potential scope expansions beyond job-level memory profiling. They're listed here for visibility but are **not committed to any version** as they may be better served by separate tools or integrations.
+
+- **CPU/I/O metrics** - Expand beyond memory profiling
+  - `--with-cpu` and `--with-io` flags for additional performance data
+  - Platform-dependent, requires different OS APIs
+  - **Rationale for deferral**: Significant complexity; users needing this likely already use `perf`, `htop`, etc. Focus remains on being the best memory profiler.
+
+- **GPU memory tracking** - ML/HPC workload support
+  - `--with-gpu` flag to track VRAM usage (NVIDIA via nvidia-smi/NVML)
+  - Useful for machine learning and HPC workloads
+  - **Rationale for deferral**: Platform-specific (Linux-only initially), GPUs are shared resources (doesn't fit job-level model cleanly). May be better as a wrapper script or separate tool.
+
+**Philosophy**: memwatch aims to be the **definitive job-level memory profiler** - simple, reliable, and cross-platform. Features that significantly expand scope or complexity are carefully evaluated to maintain this focus.
 
 ---
 

@@ -78,18 +78,11 @@ pub fn print_summary(profile: &JobProfile) {
 
         println!("\nPer-process peak RSS:");
         for proc in valid_processes {
-            // Truncate long command lines
-            let cmd = if proc.command.len() > 60 {
-                format!("{}...", &proc.command[..57])
-            } else {
-                proc.command.clone()
-            };
-
             println!(
                 "  pid {:5}  {:>10}  {}",
                 proc.pid,
                 format_memory(proc.max_rss_kib),
-                cmd
+                proc.command
             );
         }
 

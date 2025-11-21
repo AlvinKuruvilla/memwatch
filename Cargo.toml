@@ -2,6 +2,12 @@
 name = "memwatch"
 version = "0.1.0"
 edition = "2024"
+authors = ["Alvin Kuruvilla"]
+license = "MIT"
+description = "Cross-platform job-level memory profiler for tracking total memory, per-process memory, and peak memory usage"
+repository = "https://github.com/AlvinKuruvilla/memwatch"
+keywords = ["profiler", "memory", "monitoring", "performance"]
+categories = ["command-line-utilities", "development-tools::profiling"]
 
 [[bin]]
 name = "memwatch"

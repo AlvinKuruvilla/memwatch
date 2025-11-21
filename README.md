@@ -71,16 +71,10 @@ Behavior is identical across both platforms.
 
 ## 🔧 Installation
 
-*(Replace with actual instructions once packaged)*
+Build locally:
 
 ```bash
-cargo install memwatch
-```
-
-Or build locally:
-
-```bash
-git clone https://github.com/yourname/memwatch
+git clone https://github.com/AlvinKuruvilla/memwatch
 cd memwatch
 cargo build --release
 ```
@@ -272,31 +266,37 @@ Planned as a separate backend later.
 
 ## 🗺 Roadmap
 
-### v1.0
+### v1.0 ✅ Complete
 
-* macOS + Linux support
-* JSON output
-* Process tree memory tracking
-* Aggregated peak memory
-* Clean summary
+- [x] macOS + Linux support
+- [x] JSON output
+- [x] Process tree memory tracking
+- [x] Aggregated peak memory
+- [x] Clean human-readable summary
+- [x] Configurable sampling interval
+- [x] Per-process peak RSS tracking
 
-### v1.1
+### v1.1 (Planned)
 
-* CSV export
-* Time-series export (timeline.csv)
-* Optional RAM usage graph via CLI flag
+- [ ] CSV export
+- [ ] Time-series export (timeline.csv)
+- [ ] Optional RAM usage graph via CLI flag
+- [ ] Package for crates.io
+- [ ] Homebrew formula
 
-### v2.0
+### v2.0 (Future)
 
-* libproc backend for faster macOS sampling
-* Windows backend
-* Improved detection of short-lived worker processes
+- [ ] libproc backend for faster macOS sampling
+- [ ] Windows backend
+- [ ] Improved detection of short-lived worker processes
+- [ ] Memory usage flamegraph visualization
 
-### v3.0
+### v3.0 (Future)
 
-* “compare” command for regression analysis
-* CI assistant scripts
-* Optional flamegraph-like memory visualizer
+- [ ] `compare` command for regression analysis
+- [ ] CI assistant scripts and GitHub Actions
+- [ ] Interactive TUI mode
+- [ ] Memory leak detection
 
 ---
 
@@ -308,5 +308,5 @@ Pull requests, issues, and benchmarks are welcome.
 
 ## 📄 License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 

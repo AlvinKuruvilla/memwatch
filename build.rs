@@ -5,6 +5,11 @@ use std::path::PathBuf;
 include!("src/cli.rs");
 
 fn main() -> std::io::Result<()> {
+    // Set build-time environment variables for version info
+    println!("cargo:rustc-env=BUILD_DATE={}", chrono::Utc::now().format("%Y-%m-%d"));
+    println!("cargo:rustc-env=BUILD_TARGET={}", std::env::var("TARGET").unwrap());
+
+    // Generate man page using clap_mangen
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let man_dir = out_dir.join("../../../man");
 

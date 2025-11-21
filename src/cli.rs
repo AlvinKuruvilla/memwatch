@@ -9,6 +9,17 @@ pub struct Cli {
     pub command: Commands,
 }
 
+impl Cli {
+    pub fn get_long_version() -> String {
+        format!(
+            "{}\nBuild date:   {}\nTarget:       {}",
+            env!("CARGO_PKG_VERSION"),
+            option_env!("BUILD_DATE").unwrap_or("unknown"),
+            option_env!("BUILD_TARGET").unwrap_or("unknown")
+        )
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Run a command and profile its memory usage

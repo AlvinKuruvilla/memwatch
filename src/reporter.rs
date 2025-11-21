@@ -1,5 +1,6 @@
 use crate::types::JobProfile;
 use anyhow::Result;
+use std::collections::HashMap;
 
 /// Format bytes in KiB to human-readable format (KiB, MiB, GiB)
 fn format_memory(kib: u64) -> String {
@@ -27,6 +28,19 @@ fn format_duration(seconds: f64) -> String {
     format!("{:02}:{:02}:{:02}", hours, minutes, secs)
 }
 
+/// Extract command name from full command line
+fn extract_command_name(command: &str) -> String {
+    // Take first word (command name)
+    let first_word = command.split_whitespace().next().unwrap_or(command);
+
+    // Get basename from path
+    if let Some(pos) = first_word.rfind('/') {
+        first_word[pos + 1..].to_string()
+    } else {
+        first_word.to_string()
+    }
+}
+
 /// Print human-readable summary
 pub fn print_summary(profile: &JobProfile) {
     println!("\nJob: {}", profile.command.join(" "));
@@ -40,10 +54,17 @@ pub fn print_summary(profile: &JobProfile) {
         .collect();
 
     if profile.max_total_rss_kib == 0 || valid_processes.is_empty() {
-        println!("Max total RSS:   {} (process exited too quickly to measure)",
+        println!("Max total RSS:   {} (no data captured)",
                  format_memory(profile.max_total_rss_kib));
-        println!("\nNote: The command completed before memory could be sampled.");
-        println!("For very short-running commands, try using a shorter sampling interval (-i).");
+        println!("\n⚠ Warning: The command completed too quickly to capture memory usage.");
+        println!("\nPossible reasons:");
+        println!("  • Command executed in < {}ms (sampling interval)", profile.interval_ms);
+        println!("  • Process spawned child and immediately exited");
+        println!("  • Command failed or was killed immediately");
+        println!("\nSuggestions:");
+        println!("  • Use a shorter interval: memwatch run -i 50 -- <command>");
+        println!("  • Check if the command actually ran: echo $?");
+        println!("  • For instant commands (like 'echo'), memory profiling may not be useful");
     } else {
         println!("Max total RSS:   {}", format_memory(profile.max_total_rss_kib));
 
@@ -71,8 +92,45 @@ pub fn print_summary(profile: &JobProfile) {
                 cmd
             );
         }
+
+        // Show process groups if there are multiple distinct commands
+        let groups = compute_process_groups(&profile.processes);
+        if groups.len() > 1 {
+            println!("\nProcess Groups (by command):");
+            let mut group_vec: Vec<_> = groups.into_iter().collect();
+            group_vec.sort_by_key(|(_, total)| std::cmp::Reverse(*total));
+
+            for (cmd_name, (count, total_rss)) in group_vec {
+                let plural = if count == 1 { "process" } else { "processes" };
+                println!(
+                    "  {:20} ({:2} {})  - Total peak: {}",
+                    cmd_name,
+                    count,
+                    plural,
+                    format_memory(total_rss)
+                );
+            }
+        }
     }
     println!();
+}
+
+/// Compute process groups by command name
+fn compute_process_groups(processes: &[crate::types::ProcessStats]) -> HashMap<String, (usize, u64)> {
+    let mut groups: HashMap<String, (usize, u64)> = HashMap::new();
+
+    for proc in processes.iter().filter(|p| p.max_rss_kib > 0) {
+        let cmd_name = extract_command_name(&proc.command);
+        groups
+            .entry(cmd_name)
+            .and_modify(|(count, total)| {
+                *count += 1;
+                *total += proc.max_rss_kib;
+            })
+            .or_insert((1, proc.max_rss_kib));
+    }
+
+    groups
 }
 
 /// Print JSON output

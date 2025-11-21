@@ -44,6 +44,8 @@ pub struct JobProfile {
     pub processes: Vec<ProcessStats>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timeline: Option<Vec<TimelinePoint>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exit_code: Option<i32>,
 }
 
 /// Snapshot of all processes in the job at a point in time
@@ -108,7 +110,7 @@ impl JobState {
         }
     }
 
-    pub fn into_profile(self, command: Vec<String>, interval_ms: u64) -> JobProfile {
+    pub fn into_profile(self, command: Vec<String>, interval_ms: u64, exit_code: Option<i32>) -> JobProfile {
         let end_time = Utc::now();
         let duration_seconds = (end_time - self.start_time).num_milliseconds() as f64 / 1000.0;
 
@@ -125,6 +127,7 @@ impl JobState {
             samples: self.samples,
             processes,
             timeline: self.timeline,
+            exit_code,
         }
     }
 }

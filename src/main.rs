@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches};
 use memwatch::cli::{Cli, Commands};
 use memwatch::csv_writer;
 use memwatch::inspector;
@@ -7,7 +7,14 @@ use memwatch::sampler;
 use std::process;
 
 fn main() {
-    let cli = Cli::parse();
+    // Create command with extended version info and parse
+    let matches = Cli::command()
+        .long_version(Cli::get_long_version())
+        .get_matches();
+
+    let cli = Cli::from_arg_matches(&matches)
+        .map_err(|e| e.exit())
+        .unwrap();
 
     match cli.command {
         Commands::Run {
@@ -18,9 +25,15 @@ fn main() {
             timeline,
             command,
         } => {
-            if let Err(e) = run_command(command, interval, json, quiet, csv, timeline) {
-                eprintln!("Error: {}", e);
-                process::exit(1);
+            match run_command(command, interval, json, quiet, csv, timeline) {
+                Ok(exit_code) => {
+                    // Exit with the child process's exit code
+                    process::exit(exit_code);
+                }
+                Err(e) => {
+                    eprintln!("Error: {}", e);
+                    process::exit(1);
+                }
             }
         }
     }
@@ -33,7 +46,7 @@ fn run_command(
     quiet: bool,
     csv_path: Option<String>,
     timeline_path: Option<String>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<i32> {
     // Create platform-specific inspector
     let inspector = inspector::create_inspector();
 
@@ -42,6 +55,9 @@ fn run_command(
 
     // Run and profile the command
     let profile = sampler::run_and_profile(command, interval_ms, track_timeline, &inspector)?;
+
+    // Capture exit code before consuming profile
+    let exit_code = profile.exit_code.unwrap_or(0);
 
     // Output results
     if json {
@@ -66,5 +82,5 @@ fn run_command(
         }
     }
 
-    Ok(())
+    Ok(exit_code)
 }

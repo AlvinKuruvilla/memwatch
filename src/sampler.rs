@@ -65,11 +65,12 @@ pub fn run_and_profile(
         thread::sleep(Duration::from_millis(interval_ms));
     }
 
-    // Wait for the process to fully exit
-    let _ = child.wait();
+    // Wait for the process to fully exit and capture exit code
+    let exit_status = child.wait().ok();
+    let exit_code = exit_status.and_then(|s| s.code());
 
     // Convert state to profile
-    Ok(state.into_profile(command, interval_ms))
+    Ok(state.into_profile(command, interval_ms, exit_code))
 }
 
 fn spawn_command(command: &[String]) -> Result<Child> {

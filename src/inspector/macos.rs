@@ -70,6 +70,11 @@ fn parse_ps_output(output: &str) -> Result<Vec<ProcessSample>> {
             continue;
         }
 
+        // Skip defunct/zombie processes - they have exited and have no RSS
+        if command.contains("<defunct>") || (command.starts_with('(') && command.ends_with(')')) {
+            continue;
+        }
+
         processes.push(ProcessSample {
             pid,
             ppid,

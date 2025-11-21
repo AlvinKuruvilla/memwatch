@@ -33,19 +33,30 @@ pub fn print_summary(profile: &JobProfile) {
     println!("Duration:        {}", format_duration(profile.duration_seconds));
     println!("Samples:         {}", profile.samples);
     println!();
-    println!("Max total RSS:   {}", format_memory(profile.max_total_rss_kib));
 
-    if let Some(max_process) = profile.processes.first() {
-        println!(
-            "Max per process: {} (pid {})",
-            format_memory(max_process.max_rss_kib),
-            max_process.pid
-        );
-    }
+    // Filter out processes with 0 RSS for display
+    let valid_processes: Vec<_> = profile.processes.iter()
+        .filter(|p| p.max_rss_kib > 0)
+        .collect();
 
-    if !profile.processes.is_empty() {
+    if profile.max_total_rss_kib == 0 || valid_processes.is_empty() {
+        println!("Max total RSS:   {} (process exited too quickly to measure)",
+                 format_memory(profile.max_total_rss_kib));
+        println!("\nNote: The command completed before memory could be sampled.");
+        println!("For very short-running commands, try using a shorter sampling interval (-i).");
+    } else {
+        println!("Max total RSS:   {}", format_memory(profile.max_total_rss_kib));
+
+        if let Some(max_process) = valid_processes.first() {
+            println!(
+                "Max per process: {} (pid {})",
+                format_memory(max_process.max_rss_kib),
+                max_process.pid
+            );
+        }
+
         println!("\nPer-process peak RSS:");
-        for proc in &profile.processes {
+        for proc in valid_processes {
             // Truncate long command lines
             let cmd = if proc.command.len() > 60 {
                 format!("{}...", &proc.command[..57])

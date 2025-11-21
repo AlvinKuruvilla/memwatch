@@ -313,6 +313,57 @@ print(result["max_total_rss_kib"])
 
 ---
 
+## 📚 Examples
+
+The `examples/` directory contains realistic demonstration programs showing memwatch's capabilities for different workload types.
+
+### MPI Distributed Computation
+
+**Location**: `examples/mpi_distributed_compute.rs`
+
+A realistic MPI example inspired by distributed zero-knowledge proof systems (like [zeroasset2](https://github.com/privacy-scaling-explorations/zeroasset2)). This demonstrates memwatch's value for tracking memory across MPI process trees - a challenge where traditional profiling tools struggle.
+
+**Quick start:**
+
+```bash
+# Run with 4 MPI processes
+mpirun -n 4 cargo run --example mpi_distributed_compute
+
+# Profile with memwatch
+memwatch run -- mpirun -n 4 cargo run --release --example mpi_distributed_compute
+```
+
+**What it demonstrates:**
+
+- **Process tree tracking**: All MPI ranks tracked as a single job
+- **Memory scaling**: Per-process memory inversely proportional to process count
+- **Short-lived execution**: Captures peak memory in ~5-10 second runs
+- **Real workload patterns**: Simulates distributed polynomial computations with realistic memory phases
+
+**Expected output:**
+
+```
+Duration: 5.234s
+Samples: 11
+
+Max total RSS: 2.25 MiB
+
+Per-process peak RSS:
+  PID 12345 (mpirun):                  1.23 MiB
+  PID 12346 (mpi_distributed_compute): 384.0 KiB
+  PID 12347 (mpi_distributed_compute): 384.0 KiB
+  PID 12348 (mpi_distributed_compute): 384.0 KiB
+  PID 12349 (mpi_distributed_compute): 384.0 KiB
+```
+
+**See** `examples/README.md` for detailed documentation, including:
+- Prerequisites (OpenMPI installation)
+- Memory scaling patterns
+- Comparison with traditional tools
+- Real-world applications in HPC and cryptography
+
+---
+
 ## ⚠️ Platform Support
 
 ### macOS — Fully supported

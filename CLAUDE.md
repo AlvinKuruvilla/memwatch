@@ -76,6 +76,9 @@ src/
   csv_writer.rs      # CSV export (per-process and timeline)
   types.rs           # Shared structs (ProcessSample, JobSnapshot, TimelinePoint, etc.)
   main.rs            # Binary entry point
+examples/
+  mpi_distributed_compute.rs  # MPI workload example (requires OpenMPI)
+  README.md                   # Example documentation
 ```
 
 ### Key Data Types
@@ -219,3 +222,46 @@ Always use **KiB** as the base unit internally:
 - 1 GiB = 1024 MiB
 
 Convert to human-readable IEC units only for display.
+
+## Examples
+
+The `examples/` directory contains demonstration programs showing memwatch's capabilities for different workload types.
+
+### MPI Distributed Computation Example
+
+**File**: `examples/mpi_distributed_compute.rs`
+
+A realistic MPI example inspired by distributed zero-knowledge proof systems (specifically zeroasset2). Demonstrates memwatch's value for tracking memory across MPI process trees.
+
+**Prerequisites**:
+- OpenMPI or MPICH installed
+- On macOS: `brew install open-mpi`
+- The `mpi` crate (0.8) is a dev dependency
+- Uses patched `libffi-sys` from git to fix ARM64 build issues
+
+**Building**:
+```bash
+# Build the example
+cargo build --release --example mpi_distributed_compute
+
+# Run with 4 MPI processes
+mpirun -n 4 target/release/examples/mpi_distributed_compute
+
+# Profile with memwatch
+memwatch run -- mpirun -n 4 target/release/examples/mpi_distributed_compute
+```
+
+**What it demonstrates**:
+- Process tree tracking: All MPI ranks tracked as single job
+- Memory scaling: Per-process memory inversely proportional to process count
+- Realistic workload: Simulates distributed polynomial computations with field elements
+- Short-lived execution: Captures peak memory in ~5-10 second runs
+- Memory phases: Initialization → Computation → Communication → Cleanup
+
+**Key features**:
+- Distributed arrays (each rank allocates n/np elements)
+- Working buffers (2x allocation for simulated FFT workspace)
+- Communication spikes (temporary buffers during MPI collectives)
+- Configurable problem size via `--size` argument
+
+See `examples/README.md` for detailed documentation.

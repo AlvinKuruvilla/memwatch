@@ -44,6 +44,10 @@ pub enum Commands {
         #[arg(long, value_name = "FILE")]
         timeline: Option<String>,
 
+        /// Suppress command output (hide stdout/stderr from the profiled command)
+        #[arg(long)]
+        silent: bool,
+
         /// Command to run (everything after --)
         #[arg(trailing_var_arg = true, required = true)]
         command: Vec<String>,

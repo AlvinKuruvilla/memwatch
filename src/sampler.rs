@@ -12,6 +12,7 @@ pub fn run_and_profile(
     command: Vec<String>,
     interval_ms: u64,
     track_timeline: bool,
+    silent: bool,
     inspector: &impl ProcessInspector,
 ) -> Result<JobProfile> {
     if command.is_empty() {
@@ -19,7 +20,7 @@ pub fn run_and_profile(
     }
 
     // Spawn the command
-    let mut child = spawn_command(&command)
+    let mut child = spawn_command(&command, silent)
         .context("Failed to start command")?;
 
     let root_pid = child.id() as i32;
@@ -73,7 +74,7 @@ pub fn run_and_profile(
     Ok(state.into_profile(command, interval_ms, exit_code))
 }
 
-fn spawn_command(command: &[String]) -> Result<Child> {
+fn spawn_command(command: &[String], silent: bool) -> Result<Child> {
     if command.is_empty() {
         anyhow::bail!("Command is empty");
     }
@@ -81,9 +82,16 @@ fn spawn_command(command: &[String]) -> Result<Child> {
     let program = &command[0];
     let args = &command[1..];
 
-    Command::new(program)
-        .args(args)
-        .spawn()
+    let mut cmd = Command::new(program);
+    cmd.args(args);
+
+    // Suppress output if silent flag is set
+    if silent {
+        cmd.stdout(std::process::Stdio::null());
+        cmd.stderr(std::process::Stdio::null());
+    }
+
+    cmd.spawn()
         .context(format!("Failed to execute: {}", program))
 }
 

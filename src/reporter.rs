@@ -1,6 +1,7 @@
 use crate::types::JobProfile;
 use anyhow::Result;
 use std::collections::HashMap;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Format bytes in KiB to human-readable format (KiB, MiB, GiB)
 fn format_memory(kib: u64) -> String {
@@ -41,11 +42,15 @@ fn extract_command_name(command: &str) -> String {
     }
 }
 
-/// Print human-readable summary
+/// Print human-readable summary with colors and compact formatting
 pub fn print_summary(profile: &JobProfile) {
+    let mut stdout = StandardStream::stdout(ColorChoice::Auto);
+
+    // Job header
     println!("\nJob: {}", profile.command.join(" "));
-    println!("Duration:        {}", format_duration(profile.duration_seconds));
-    println!("Samples:         {}", profile.samples);
+    print!("Duration: {}  |  Samples: {}",
+           format_duration(profile.duration_seconds),
+           profile.samples);
     println!();
 
     // Filter out processes with 0 RSS for display
@@ -54,8 +59,12 @@ pub fn print_summary(profile: &JobProfile) {
         .collect();
 
     if profile.max_total_rss_kib == 0 || valid_processes.is_empty() {
-        println!("Max total RSS:   {} (no data captured)",
+        // Warning case
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
+        println!("\nMax total RSS: {} (no data captured)",
                  format_memory(profile.max_total_rss_kib));
+        let _ = stdout.reset();
+
         println!("\n⚠ Warning: The command completed too quickly to capture memory usage.");
         println!("\nPossible reasons:");
         println!("  • Command executed in < {}ms (sampling interval)", profile.interval_ms);
@@ -66,44 +75,90 @@ pub fn print_summary(profile: &JobProfile) {
         println!("  • Check if the command actually ran: echo $?");
         println!("  • For instant commands (like 'echo'), memory profiling may not be useful");
     } else {
-        println!("Max total RSS:   {}", format_memory(profile.max_total_rss_kib));
+        // Memory summary section
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true));
+        print!("\nMEMORY SUMMARY");
+        let _ = stdout.reset();
+        println!();
+
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
+        print!("  Total peak:    {}", format_memory(profile.max_total_rss_kib));
+        let _ = stdout.reset();
+        println!();
 
         if let Some(max_process) = valid_processes.first() {
-            println!(
-                "Max per process: {} (pid {})",
-                format_memory(max_process.max_rss_kib),
-                max_process.pid
-            );
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
+            print!("  Process peak:  {} ", format_memory(max_process.max_rss_kib));
+            let _ = stdout.reset();
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+            print!("(pid {})", max_process.pid);
+            let _ = stdout.reset();
+            println!();
         }
 
-        println!("\nPer-process peak RSS:");
+        // Per-process peaks table
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true));
+        print!("\nPER-PROCESS PEAKS");
+        let _ = stdout.reset();
+        println!();
+
+        // Table header
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+        println!("  {:>5}  {:>10}  {:>8}  {}", "PID", "MEMORY", "TIME", "COMMAND");
+        let _ = stdout.reset();
+
+        // Table rows
         for proc in valid_processes {
             let elapsed_secs = (proc.peak_time - profile.start_time).num_milliseconds() as f64 / 1000.0;
-            println!(
-                "  pid {:5}  {:>10}  @ {:6.1}s  {}",
-                proc.pid,
-                format_memory(proc.max_rss_kib),
-                elapsed_secs,
-                proc.command
-            );
+
+            // PID (dimmed)
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+            print!("  {:>5}  ", proc.pid);
+            let _ = stdout.reset();
+
+            // Memory (green)
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
+            print!("{:>10}  ", format_memory(proc.max_rss_kib));
+            let _ = stdout.reset();
+
+            // Time (yellow)
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
+            print!("@ {:5.1}s  ", elapsed_secs);
+            let _ = stdout.reset();
+
+            // Command (default)
+            println!("{}", proc.command);
         }
 
-        // Show process groups if there are multiple distinct commands
+        // Process groups table
         let groups = compute_process_groups(&profile.processes);
         if groups.len() > 1 {
-            println!("\nProcess Groups (by command):");
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true));
+            print!("\nPROCESS GROUPS");
+            let _ = stdout.reset();
+            println!();
+
+            // Table header
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+            println!("  {:24}  {:>9}  {:>12}", "COMMAND", "PROCESSES", "TOTAL PEAK");
+            let _ = stdout.reset();
+
+            // Sort by total RSS (descending)
             let mut group_vec: Vec<_> = groups.into_iter().collect();
             group_vec.sort_by_key(|(_, total)| std::cmp::Reverse(*total));
 
+            // Table rows
             for (cmd_name, (count, total_rss)) in group_vec {
-                let plural = if count == 1 { "process" } else { "processes" };
-                println!(
-                    "  {:20} ({:2} {})  - Total peak: {}",
-                    cmd_name,
-                    count,
-                    plural,
-                    format_memory(total_rss)
-                );
+                print!("  {:24}  ", cmd_name);
+
+                let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+                print!("{:>9}  ", count);
+                let _ = stdout.reset();
+
+                let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
+                print!("{:>12}", format_memory(total_rss));
+                let _ = stdout.reset();
+                println!();
             }
         }
     }

@@ -78,10 +78,12 @@ pub fn print_summary(profile: &JobProfile) {
 
         println!("\nPer-process peak RSS:");
         for proc in valid_processes {
+            let elapsed_secs = (proc.peak_time - profile.start_time).num_milliseconds() as f64 / 1000.0;
             println!(
-                "  pid {:5}  {:>10}  {}",
+                "  pid {:5}  {:>10}  @ {:6.1}s  {}",
                 proc.pid,
                 format_memory(proc.max_rss_kib),
+                elapsed_secs,
                 proc.command
             );
         }

@@ -20,6 +20,7 @@ pub struct ProcessStats {
     pub max_rss_kib: u64,
     pub first_seen: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
+    pub peak_time: DateTime<Utc>,
 }
 
 /// Timeline data point for time-series export
@@ -96,7 +97,11 @@ impl JobState {
             self.process_stats
                 .entry(proc.pid)
                 .and_modify(|stats| {
-                    stats.max_rss_kib = stats.max_rss_kib.max(proc.rss_kib);
+                    // Update peak time only if this is a new peak
+                    if proc.rss_kib > stats.max_rss_kib {
+                        stats.max_rss_kib = proc.rss_kib;
+                        stats.peak_time = snapshot.timestamp;
+                    }
                     stats.last_seen = snapshot.timestamp;
                 })
                 .or_insert_with(|| ProcessStats {
@@ -106,6 +111,7 @@ impl JobState {
                     max_rss_kib: proc.rss_kib,
                     first_seen: snapshot.timestamp,
                     last_seen: snapshot.timestamp,
+                    peak_time: snapshot.timestamp,
                 });
         }
     }

@@ -372,18 +372,17 @@ Additional exit codes may be added for future features like leak detection thres
   - Analyze RSS growth trends over job lifetime
   - Configurable thresholds (`--leak-min-growth`, `--leak-min-duration`)
   - Conservative defaults to avoid false positives (50% growth, 60s minimum)
-- [ ] **`memwatch view`** - Post-run visualizer
-  - Analyze completed runs with rich visualizations
-  - `memwatch view results.json` or `memwatch view timeline.csv`
-  - Beautiful ASCII graphs for terminal display
-  - Optional full TUI mode with interactive navigation
+- [ ] **`memwatch view`** - Interactive HTML visualizer
+  - Beautiful interactive HTML reports for completed runs
+  - `memwatch view results.json --html report.html`
+  - Grouped timeline view showing per-process memory over time (like Chrome DevTools)
+  - Zoom, pan, hover for detailed metrics
+  - Multiple chart types: timeline swimlanes, stacked area charts, summary tables
+  - Single-file HTML output for easy sharing
 - [ ] **Live progress mode** - Real-time job monitoring
   - `--live` flag for simple single-line progress updates
   - Shows current RSS, peak RSS, and top process during execution
   - Non-intrusive, works over SSH and in CI logs
-- [ ] **Inline graphs** - Visual summaries in output
-  - `--graph` flag to add ASCII graphs to run summary
-  - Small memory-over-time visualization for quick insights
 - [ ] **CI integration helpers** - GitHub Actions and automation
   - Example workflow files for catching regressions
   - Shell/Python wrappers for common CI patterns

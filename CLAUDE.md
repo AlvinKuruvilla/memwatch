@@ -89,6 +89,15 @@ examples/
 - `rss_kib: u64` (always in KiB internally)
 - `command: String`
 
+**ProcessStats**: Per-process statistics across job lifetime
+- `pid: i32`
+- `ppid: i32`
+- `command: String`
+- `max_rss_kib: u64` - Peak RSS for this process
+- `first_seen: DateTime<Utc>` - When process first appeared
+- `last_seen: DateTime<Utc>` - When process last seen
+- `peak_time: DateTime<Utc>` - When process hit its peak RSS
+
 **TimelinePoint**: Time-series data point for timeline exports
 - `timestamp: DateTime<Utc>`
 - `elapsed_seconds: f64`
@@ -96,10 +105,12 @@ examples/
 - `process_count: usize`
 
 **Job Metrics**:
-- `max_total_rss_kib`: Peak sum of RSS across all job processes
-- Per-PID peak RSS tracking
+- `max_total_rss_kib`: Peak sum of RSS across all job processes at any single moment
+- Per-PID peak RSS tracking with timestamps
 - Duration and sample count
 - Optional timeline data (only when `--timeline` is used)
+
+**Important**: Per-process peaks may occur at different times. The sum of per-process peaks may exceed max_total_rss_kib.
 
 ### Process Tree Detection
 
@@ -132,12 +143,20 @@ All memory units are stored as **KiB internally**. Human-readable conversion (Mi
 ## Output Formats
 
 ### Human-Readable (default)
-- Duration, sample count
-- Max total RSS (formatted as KiB/MiB/GiB)
-- Max per-process RSS
-- Per-process peak table with PIDs and commands
+- Compact, table-formatted output with ANSI colors
+- **Color scheme**:
+  - Cyan/Bold: Section headers (MEMORY SUMMARY, PER-PROCESS PEAKS)
+  - Green: Memory values
+  - Yellow: Timestamps
+  - Dimmed: PIDs and process counts
+  - Colors auto-disable when piping to files (ColorChoice::Auto)
+- **Peak timestamps**: Shows when each process hit its peak RSS (elapsed seconds from job start)
+- **Process table**: Aligned columns with headers (PID, MEMORY, TIME, COMMAND)
+- **Process groups table**: Aggregated view by command name
 - Filters out defunct/zombie processes and 0 RSS processes
 - Helpful error messages for quick-exit processes
+
+**Dependencies**: Uses `termcolor` crate for cross-platform ANSI color support
 
 ### JSON (--json flag)
 Structured output with:
@@ -173,6 +192,7 @@ Options:
       --quiet            Suppress output (useful with --json)
       --csv <FILE>       Export per-process peak RSS to CSV file
       --timeline <FILE>  Export time-series memory data to CSV file
+      --silent           Suppress command output (hide stdout/stderr from profiled command)
 ```
 
 ## Key Implementation Considerations

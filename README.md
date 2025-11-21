@@ -32,37 +32,41 @@ Monitors the root command **plus all children and grandchildren**.
 
 Captures the real high-water RAM usage across the entire job.
 
-### ✔ Per-process peak memory
+### ✔ Per-process peak memory with timestamps
 
-See which worker or process consumed the most memory.
+See which worker or process consumed the most memory, and when each process peaked.
 
 ### ✔ Timeline-aware sampling
 
 Samples memory at a user-defined interval (default: 500ms).
 
-### ✔ Clean human-readable summary
+### ✔ Clean human-readable summary with colors
 
-Example:
+Compact, table-formatted output with ANSI colors for easy scanning:
 
 ```
 Job: cargo build --release
-Duration:        00:03:21
-Samples:         402
+Duration: 00:03:21  |  Samples: 402
 
-Max total RSS:   6.4 GiB
-Max per process: 912 MiB (pid 8479)
+MEMORY SUMMARY
+  Total peak:    6.4 GiB
+  Process peak:  912 MiB (pid 8479)
 
-Per-process peak RSS:
-  pid 8473  534 MiB  rustc
-  pid 8474  612 MiB  rustc
-  pid 8475  703 MiB  rustc
-  ...
+PER-PROCESS PEAKS
+    PID      MEMORY     TIME     COMMAND
+   8473     534 MiB  @  45.2s   rustc
+   8474     612 MiB  @  67.8s   rustc
+   8475     703 MiB  @ 102.3s   rustc
+   ...
 
-Process Groups (by command):
-  rustc                ( 8 processes)  - Total peak: 4.2 GiB
-  cargo                ( 1 process)   - Total peak: 256 MiB
-  cc                   ( 2 processes)  - Total peak: 128 MiB
+PROCESS GROUPS
+  COMMAND    PROCESSES    TOTAL PEAK
+  rustc              8      4.2 GiB
+  cargo              1      256 MiB
+  cc                 2      128 MiB
 ```
+
+Colors automatically disable when piping to files.
 
 ### ✔ Process grouping
 
@@ -160,6 +164,14 @@ memwatch run --timeline timeline.csv -- ./benchmark
 
 ```bash
 memwatch run --csv procs.csv --timeline time.csv -- my_command
+```
+
+### Silent mode (suppress command output)
+
+Hide stdout/stderr from the profiled command (useful for noisy commands):
+
+```bash
+memwatch run --silent -- mpirun -n 8 ./verbose_app
 ```
 
 ---

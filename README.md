@@ -115,6 +115,28 @@ memwatch run --json -- cargo test > mem.json
 memwatch run --json --quiet -- my_command
 ```
 
+### CSV export
+
+Export per-process peak memory to CSV:
+
+```bash
+memwatch run --csv processes.csv -- cargo build
+```
+
+### Timeline export
+
+Export time-series memory data for plotting:
+
+```bash
+memwatch run --timeline timeline.csv -- ./benchmark
+```
+
+### Combined exports
+
+```bash
+memwatch run --csv procs.csv --timeline time.csv -- my_command
+```
+
 ---
 
 ## 📦 Output Formats
@@ -153,6 +175,29 @@ Structured and stable:
   ]
 }
 ```
+
+### CSV output
+
+#### Per-process CSV (`--csv`)
+
+Exports peak memory usage for each process:
+
+```csv
+pid,ppid,command,max_rss_kib,max_rss_mib,first_seen,last_seen
+1234,1233,"cargo test",102400,100.00,2025-11-20T18:02:34Z,2025-11-20T18:05:55Z
+```
+
+#### Timeline CSV (`--timeline`)
+
+Exports memory usage over time for plotting:
+
+```csv
+timestamp,elapsed_seconds,total_rss_kib,total_rss_mib,process_count
+2025-11-20T18:02:34Z,0.000,51200,50.00,4
+2025-11-20T18:02:35Z,0.500,102400,100.00,8
+```
+
+Perfect for creating graphs in Python, R, Excel, or Grafana.
 
 ---
 
@@ -276,13 +321,16 @@ Planned as a separate backend later.
 - [x] Configurable sampling interval
 - [x] Per-process peak RSS tracking
 
-### v1.1 (Planned)
+### v1.1 (In Progress)
 
-- [ ] CSV export
-- [ ] Time-series export (timeline.csv)
+- [x] CSV export
+- [x] Time-series export (timeline.csv)
+- [x] Edge case handling (defunct processes, quick-exit commands)
+- [x] Helpful error messages and suggestions
 - [ ] Optional RAM usage graph via CLI flag
 - [ ] Package for crates.io
 - [ ] Homebrew formula
+- [ ] Man page documentation
 
 ### v2.0 (Future)
 

@@ -24,7 +24,7 @@ cargo test
 cargo build
 ```
 
-### Running the Tool (once implemented)
+### Running the Tool
 ```bash
 # Basic usage
 cargo run -- run -- <command> [args...]
@@ -34,6 +34,15 @@ cargo run -- run -i 200 -- cargo test --release
 
 # JSON output
 cargo run -- run --json -- <command>
+
+# CSV export (per-process peak RSS)
+cargo run -- run --csv processes.csv -- <command>
+
+# Timeline export (time-series data)
+cargo run -- run --timeline timeline.csv -- <command>
+
+# Combined exports
+cargo run -- run --csv procs.csv --timeline time.csv -- <command>
 ```
 
 ## Architecture
@@ -54,17 +63,19 @@ This trait has OS-specific implementations:
 
 ### Module Structure
 
-Expected structure (per SPEC.md):
+Current structure:
 ```
 src/
-  cli.rs             # CLI argument parsing (clap or similar)
+  cli.rs             # CLI argument parsing (clap)
   sampler.rs         # Sampling loop and process tree logic
   inspector/
       mod.rs         # ProcessInspector trait definition
       linux.rs       # Linux /proc implementation
       macos.rs       # macOS ps implementation
   reporter.rs        # Summary formatting and JSON output
-  types.rs           # Shared structs (ProcessSample, JobSnapshot, etc.)
+  csv_writer.rs      # CSV export (per-process and timeline)
+  types.rs           # Shared structs (ProcessSample, JobSnapshot, TimelinePoint, etc.)
+  main.rs            # Binary entry point
 ```
 
 ### Key Data Types
@@ -75,10 +86,17 @@ src/
 - `rss_kib: u64` (always in KiB internally)
 - `command: String`
 
+**TimelinePoint**: Time-series data point for timeline exports
+- `timestamp: DateTime<Utc>`
+- `elapsed_seconds: f64`
+- `total_rss_kib: u64`
+- `process_count: usize`
+
 **Job Metrics**:
 - `max_total_rss_kib`: Peak sum of RSS across all job processes
 - Per-PID peak RSS tracking
 - Duration and sample count
+- Optional timeline data (only when `--timeline` is used)
 
 ### Process Tree Detection
 
@@ -115,6 +133,8 @@ All memory units are stored as **KiB internally**. Human-readable conversion (Mi
 - Max total RSS (formatted as KiB/MiB/GiB)
 - Max per-process RSS
 - Per-process peak table with PIDs and commands
+- Filters out defunct/zombie processes and 0 RSS processes
+- Helpful error messages for quick-exit processes
 
 ### JSON (--json flag)
 Structured output with:
@@ -123,6 +143,21 @@ Structured output with:
 - Duration in seconds
 - `max_total_rss_kib`
 - `processes` array with per-PID metrics
+- Optional `timeline` array (when --timeline is used)
+
+### CSV Exports
+
+#### Per-Process CSV (--csv <file>)
+Exports peak memory per process:
+- Headers: `pid,ppid,command,max_rss_kib,max_rss_mib,first_seen,last_seen`
+- One row per process
+- Filters out 0 RSS processes
+
+#### Timeline CSV (--timeline <file>)
+Exports time-series data:
+- Headers: `timestamp,elapsed_seconds,total_rss_kib,total_rss_mib,process_count`
+- One row per sample
+- Perfect for plotting memory over time
 
 ## CLI Structure
 
@@ -133,21 +168,28 @@ Options:
   -i, --interval <ms>    Sampling interval in milliseconds (default: 500)
       --json             Output JSON instead of human-readable text
       --quiet            Suppress output (useful with --json)
+      --csv <FILE>       Export per-process peak RSS to CSV file
+      --timeline <FILE>  Export time-series memory data to CSV file
 ```
 
 ## Key Implementation Considerations
 
 ### Sampling Loop
 - Configurable interval (default 500ms)
+- **Immediate first sample** after process spawn to catch quick processes
 - Handle process churn (processes appearing/disappearing between samples)
-- Update running maxima, don't store all samples in memory
+- Update running maxima, don't store all samples in memory (except timeline if enabled)
+- **Timeline tracking**: Optional, only when `--timeline` flag is used
 - Continue while at least one job process is alive
+- Filter defunct/zombie processes on macOS (contains `<defunct>` or `(name)`)
 
 ### Error Handling
 - Command fails to start: clear error message, non-zero exit
-- Quick-exit commands: handle gracefully with minimal samples
+- **Quick-exit commands**: Show helpful message with suggestion to use shorter interval
+- **0 RSS processes**: Filtered from output, with explanation when all processes have 0 RSS
 - SIGINT forwarding: forward to root PID and children, then cleanup
 - Permission errors: skip with warning
+- CSV/Timeline export errors: Clear context with file path in error message
 
 ### Testing Strategy
 - Unit tests for process-tree detection with mocked snapshots

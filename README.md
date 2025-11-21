@@ -85,6 +85,18 @@ Binary will be in:
 target/release/memwatch
 ```
 
+### Man Page
+
+A man page is automatically generated during build:
+
+```bash
+# View the man page
+man target/debug/man/memwatch.1
+
+# Or after release build
+man target/release/man/memwatch.1
+```
+
 ---
 
 ## 🕹 Usage
@@ -342,9 +354,9 @@ Additional exit codes may be added for future features like leak detection thres
 - [x] Time-series export (timeline.csv)
 - [x] Edge case handling (defunct processes, quick-exit commands)
 - [x] Helpful error messages and suggestions
+- [x] Man page documentation
 - [ ] Package for crates.io
 - [ ] Homebrew formula
-- [ ] Man page documentation
 
 ### v2.0 (Core Profiling Enhancements)
 

@@ -11,6 +11,7 @@ use std::time::Duration;
 pub fn run_and_profile(
     command: Vec<String>,
     interval_ms: u64,
+    track_timeline: bool,
     inspector: &impl ProcessInspector,
 ) -> Result<JobProfile> {
     if command.is_empty() {
@@ -22,7 +23,13 @@ pub fn run_and_profile(
         .context("Failed to start command")?;
 
     let root_pid = child.id() as i32;
-    let mut state = JobState::new();
+    let mut state = JobState::new(track_timeline);
+
+    // Take an immediate first sample to catch quick-exit processes
+    // This happens as fast as possible after spawn
+    if let Ok(snapshot) = sample_job_tree(inspector, root_pid) {
+        state.update(snapshot);
+    }
 
     // Sampling loop
     loop {

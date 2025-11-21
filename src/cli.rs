@@ -25,6 +25,14 @@ pub enum Commands {
         #[arg(long)]
         quiet: bool,
 
+        /// Export per-process peak RSS to CSV file
+        #[arg(long, value_name = "FILE")]
+        csv: Option<String>,
+
+        /// Export time-series memory data to CSV file
+        #[arg(long, value_name = "FILE")]
+        timeline: Option<String>,
+
         /// Command to run (everything after --)
         #[arg(trailing_var_arg = true, required = true)]
         command: Vec<String>,

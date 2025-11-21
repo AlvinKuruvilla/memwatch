@@ -22,6 +22,15 @@ pub struct ProcessStats {
     pub last_seen: DateTime<Utc>,
 }
 
+/// Timeline data point for time-series export
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TimelinePoint {
+    pub timestamp: DateTime<Utc>,
+    pub elapsed_seconds: f64,
+    pub total_rss_kib: u64,
+    pub process_count: usize,
+}
+
 /// Complete job memory profile
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JobProfile {
@@ -33,6 +42,8 @@ pub struct JobProfile {
     pub max_total_rss_kib: u64,
     pub samples: usize,
     pub processes: Vec<ProcessStats>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeline: Option<Vec<TimelinePoint>>,
 }
 
 /// Snapshot of all processes in the job at a point in time
@@ -50,21 +61,34 @@ pub struct JobState {
     pub max_total_rss_kib: u64,
     pub samples: usize,
     pub process_stats: HashMap<i32, ProcessStats>,
+    pub timeline: Option<Vec<TimelinePoint>>,
 }
 
 impl JobState {
-    pub fn new() -> Self {
+    pub fn new(track_timeline: bool) -> Self {
         Self {
             start_time: Utc::now(),
             max_total_rss_kib: 0,
             samples: 0,
             process_stats: HashMap::new(),
+            timeline: if track_timeline { Some(Vec::new()) } else { None },
         }
     }
 
     pub fn update(&mut self, snapshot: JobSnapshot) {
         self.samples += 1;
         self.max_total_rss_kib = self.max_total_rss_kib.max(snapshot.total_rss_kib);
+
+        // Track timeline if requested
+        if let Some(timeline) = &mut self.timeline {
+            let elapsed_seconds = (snapshot.timestamp - self.start_time).num_milliseconds() as f64 / 1000.0;
+            timeline.push(TimelinePoint {
+                timestamp: snapshot.timestamp,
+                elapsed_seconds,
+                total_rss_kib: snapshot.total_rss_kib,
+                process_count: snapshot.processes.len(),
+            });
+        }
 
         for proc in snapshot.processes {
             self.process_stats
@@ -100,6 +124,7 @@ impl JobState {
             max_total_rss_kib: self.max_total_rss_kib,
             samples: self.samples,
             processes,
+            timeline: self.timeline,
         }
     }
 }

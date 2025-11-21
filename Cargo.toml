@@ -27,3 +27,10 @@ anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 clap_mangen = "0.2"
 chrono = "0.4"
+
+[dev-dependencies]
+mpi = "0.8"
+
+[patch.crates-io]
+# Fix for libffi-sys build issues on modern macOS ARM64 systems
+libffi-sys = { git = 'https://github.com/integer32llc/libffi-rs', rev = "8df0df577317bdca2c2b5e9ae263ba0e98fa9076" }

@@ -45,7 +45,7 @@ Samples memory at a user-defined interval (default: 500ms).
 Example:
 
 ```
-Job: prterun -n 8 cargo test --release -p dis_cq bench_fold_prove_scalability
+Job: cargo build --release
 Duration:        00:03:21
 Samples:         402
 
@@ -57,11 +57,24 @@ Per-process peak RSS:
   pid 8474  612 MiB  rustc
   pid 8475  703 MiB  rustc
   ...
+
+Process Groups (by command):
+  rustc                ( 8 processes)  - Total peak: 4.2 GiB
+  cargo                ( 1 process)   - Total peak: 256 MiB
+  cc                   ( 2 processes)  - Total peak: 128 MiB
 ```
+
+### ✔ Process grouping
+
+Automatically aggregates memory by command name to show which programs consumed the most total memory.
 
 ### ✔ JSON export
 
 Perfect for dashboards, plotting, or regression tracking.
+
+### ✔ Exit code forwarding
+
+Transparently passes through the child process's exit code for seamless CI/CD integration.
 
 ### ✔ macOS + Linux parity
 
@@ -348,13 +361,19 @@ Additional exit codes may be added for future features like leak detection thres
 - [x] Configurable sampling interval
 - [x] Per-process peak RSS tracking
 
-### v1.1 (In Progress)
+### v1.1 ✅ Complete
 
 - [x] CSV export
 - [x] Time-series export (timeline.csv)
 - [x] Edge case handling (defunct processes, quick-exit commands)
 - [x] Helpful error messages and suggestions
 - [x] Man page documentation
+- [x] Exit code forwarding (transparent pass-through for CI/CD)
+- [x] Enhanced version info (build date and target platform)
+- [x] Basic process grouping (automatic aggregation by command name)
+
+### v1.2 (Packaging)
+
 - [ ] Package for crates.io
 - [ ] Homebrew formula
 
@@ -368,10 +387,10 @@ Additional exit codes may be added for future features like leak detection thres
   - `memwatch compare base.json candidate.json` command
   - Detect memory increases with configurable thresholds
   - Perfect for CI pipelines to catch regressions
-- [ ] **Process grouping** - Aggregate memory by command/exe
-  - `--group-by command/exe/ppid` flag
-  - Show total memory per group (e.g., all rustc processes)
-  - Helps understand memory distribution in complex workloads
+- [ ] **Advanced process grouping** - Configurable grouping strategies
+  - `--group-by command/exe/ppid` flag for custom grouping
+  - Note: Basic process grouping (by command name) is already implemented in v1.1
+  - Advanced features: custom grouping keys, filtering, hierarchical views
 - [ ] **Improved short-lived process detection**
   - Better capture of rapid fork/exit patterns
   - Optional startup burst sampling mode

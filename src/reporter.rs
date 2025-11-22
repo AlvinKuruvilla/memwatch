@@ -58,8 +58,46 @@ pub fn print_summary(profile: &JobProfile) {
         .filter(|p| p.max_rss_kib > 0)
         .collect();
 
-    if profile.max_total_rss_kib == 0 || valid_processes.is_empty() {
-        // Warning case
+    if profile.max_total_rss_kib == 0 {
+        // No data captured at all
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
+        println!("\nMax total RSS: {} (no data captured)",
+                 format_memory(profile.max_total_rss_kib));
+        let _ = stdout.reset();
+
+        println!("\n⚠ Warning: The command completed too quickly to capture memory usage.");
+        println!("\nPossible reasons:");
+        println!("  • Command executed in < {}ms (sampling interval)", profile.interval_ms);
+        println!("  • Process spawned child and immediately exited");
+        println!("  • Command failed or was killed immediately");
+        println!("\nSuggestions:");
+        println!("  • Use a shorter interval: memwatch run -i 50 -- <command>");
+        println!("  • Check if the command actually ran: echo $?");
+        println!("  • For instant commands (like 'echo'), memory profiling may not be useful");
+    } else if valid_processes.is_empty() && profile.filter.is_some() {
+        // All processes were filtered out
+        let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
+        println!("\n⚠ Warning: All processes were filtered out.");
+        let _ = stdout.reset();
+        println!("\nTotal job memory was {}, but no processes match the filter criteria.",
+                 format_memory(profile.max_total_rss_kib));
+
+        if let Some(ref filter) = profile.filter {
+            println!("\nActive filters:");
+            if let Some(ref exclude) = filter.exclude_pattern {
+                println!("  • Exclude pattern: '{}'", exclude);
+            }
+            if let Some(ref include) = filter.include_pattern {
+                println!("  • Include pattern: '{}'", include);
+            }
+        }
+
+        println!("\nSuggestions:");
+        println!("  • Check your filter patterns for typos");
+        println!("  • Use broader patterns (e.g., 'test' instead of '^test$')");
+        println!("  • Run without filters to see all processes: memwatch run --json -- <command>");
+    } else if valid_processes.is_empty() {
+        // No valid processes (no filter applied)
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
         println!("\nMax total RSS: {} (no data captured)",
                  format_memory(profile.max_total_rss_kib));
@@ -84,6 +122,13 @@ pub fn print_summary(profile: &JobProfile) {
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
         print!("  Total peak:    {}", format_memory(profile.max_total_rss_kib));
         let _ = stdout.reset();
+
+        // Show filtering info if applicable
+        if profile.filter.is_some() {
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+            print!(" (all processes)");
+            let _ = stdout.reset();
+        }
         println!();
 
         if let Some(max_process) = valid_processes.first() {
@@ -100,6 +145,13 @@ pub fn print_summary(profile: &JobProfile) {
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Cyan)).set_bold(true));
         print!("\nPER-PROCESS PEAKS");
         let _ = stdout.reset();
+
+        // Show filter annotation in header if applicable
+        if let (Some(filtered_count), Some(filtered_rss)) = (profile.filtered_process_count, profile.filtered_total_rss_kib) {
+            let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+            print!(" ({} processes filtered out, {} total)", filtered_count, format_memory(filtered_rss));
+            let _ = stdout.reset();
+        }
         println!();
 
         // Table header

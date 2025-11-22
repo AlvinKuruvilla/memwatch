@@ -1,6 +1,16 @@
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+/// Process filtering configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilterConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exclude_pattern: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_pattern: Option<String>,
+}
 
 /// One snapshot of a single process at a point in time
 #[derive(Debug, Clone)]
@@ -47,6 +57,14 @@ pub struct JobProfile {
     pub timeline: Option<Vec<TimelinePoint>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filter: Option<FilterConfig>,
+    /// Number of processes that were filtered out
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filtered_process_count: Option<usize>,
+    /// Total RSS of filtered processes (KiB)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filtered_total_rss_kib: Option<u64>,
 }
 
 /// Snapshot of all processes in the job at a point in time
@@ -116,14 +134,43 @@ impl JobState {
         }
     }
 
-    pub fn into_profile(self, command: Vec<String>, interval_ms: u64, exit_code: Option<i32>) -> JobProfile {
+    pub fn into_profile(
+        self,
+        command: Vec<String>,
+        interval_ms: u64,
+        exit_code: Option<i32>,
+        exclude_pattern: Option<String>,
+        include_pattern: Option<String>,
+    ) -> anyhow::Result<JobProfile> {
         let end_time = Utc::now();
         let duration_seconds = (end_time - self.start_time).num_milliseconds() as f64 / 1000.0;
 
-        let mut processes: Vec<ProcessStats> = self.process_stats.into_values().collect();
-        processes.sort_by_key(|p| std::cmp::Reverse(p.max_rss_kib));
+        let mut all_processes: Vec<ProcessStats> = self.process_stats.into_values().collect();
+        all_processes.sort_by_key(|p| std::cmp::Reverse(p.max_rss_kib));
 
-        JobProfile {
+        // Apply filtering if patterns are provided
+        let (processes, filter_info) = if exclude_pattern.is_some() || include_pattern.is_some() {
+            apply_filter(&all_processes, exclude_pattern.as_deref(), include_pattern.as_deref())?
+        } else {
+            (all_processes, None)
+        };
+
+        // Create filter metadata if patterns were provided
+        let (filter, filtered_process_count, filtered_total_rss_kib) = if exclude_pattern.is_some() || include_pattern.is_some() {
+            let (filtered_count, filtered_rss) = filter_info.unwrap_or((0, 0));
+            (
+                Some(FilterConfig {
+                    exclude_pattern,
+                    include_pattern,
+                }),
+                Some(filtered_count),
+                Some(filtered_rss),
+            )
+        } else {
+            (None, None, None)
+        };
+
+        Ok(JobProfile {
             command,
             start_time: self.start_time,
             end_time,
@@ -134,6 +181,66 @@ impl JobState {
             processes,
             timeline: self.timeline,
             exit_code,
+            filter,
+            filtered_process_count,
+            filtered_total_rss_kib,
+        })
+    }
+}
+
+/// Apply include/exclude filters to process list
+/// Returns (filtered_processes, Option<(filtered_count, filtered_rss_kib)>)
+fn apply_filter(
+    processes: &[ProcessStats],
+    exclude_pattern: Option<&str>,
+    include_pattern: Option<&str>,
+) -> anyhow::Result<(Vec<ProcessStats>, Option<(usize, u64)>)> {
+    use anyhow::Context;
+
+    let exclude_regex = match exclude_pattern {
+        Some(p) => Some(Regex::new(p).context(format!("Invalid exclude pattern '{}': must be valid regex", p))?),
+        None => None,
+    };
+    let include_regex = match include_pattern {
+        Some(p) => Some(Regex::new(p).context(format!("Invalid include pattern '{}': must be valid regex", p))?),
+        None => None,
+    };
+
+    let mut filtered = Vec::new();
+    let mut filtered_out = Vec::new();
+
+    for proc in processes {
+        let mut keep = true;
+
+        // Apply include filter first
+        if let Some(ref include) = include_regex {
+            keep = include.is_match(&proc.command);
+        }
+
+        // Then apply exclude filter
+        if keep {
+            if let Some(ref exclude) = exclude_regex {
+                if exclude.is_match(&proc.command) {
+                    keep = false;
+                }
+            }
+        }
+
+        if keep {
+            filtered.push(proc.clone());
+        } else {
+            filtered_out.push(proc.clone());
         }
     }
+
+    // Always track filter info if patterns were provided, even if nothing was filtered
+    let filter_info = if exclude_pattern.is_some() || include_pattern.is_some() {
+        let filtered_count = filtered_out.len();
+        let filtered_rss: u64 = filtered_out.iter().map(|p| p.max_rss_kib).sum();
+        Some((filtered_count, filtered_rss))
+    } else {
+        None
+    };
+
+    Ok((filtered, filter_info))
 }

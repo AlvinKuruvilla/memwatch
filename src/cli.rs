@@ -48,6 +48,14 @@ pub enum Commands {
         #[arg(long)]
         silent: bool,
 
+        /// Exclude processes matching regex pattern from output (can be combined with --include)
+        #[arg(long, value_name = "PATTERN")]
+        exclude: Option<String>,
+
+        /// Only include processes matching regex pattern in output (can be combined with --exclude)
+        #[arg(long, value_name = "PATTERN")]
+        include: Option<String>,
+
         /// Command to run (everything after --)
         #[arg(trailing_var_arg = true, required = true)]
         command: Vec<String>,

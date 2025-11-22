@@ -425,6 +425,7 @@ dependencies = [
  "clap",
  "clap_mangen",
  "mpi",
+ "regex",
  "serde",
  "serde_json",
  "termcolor",

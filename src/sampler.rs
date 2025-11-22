@@ -13,6 +13,8 @@ pub fn run_and_profile(
     interval_ms: u64,
     track_timeline: bool,
     silent: bool,
+    exclude_pattern: Option<String>,
+    include_pattern: Option<String>,
     inspector: &impl ProcessInspector,
 ) -> Result<JobProfile> {
     if command.is_empty() {
@@ -71,7 +73,7 @@ pub fn run_and_profile(
     let exit_code = exit_status.and_then(|s| s.code());
 
     // Convert state to profile
-    Ok(state.into_profile(command, interval_ms, exit_code))
+    state.into_profile(command, interval_ms, exit_code, exclude_pattern, include_pattern)
 }
 
 fn spawn_command(command: &[String], silent: bool) -> Result<Child> {

@@ -8,6 +8,20 @@ pub fn export_process_csv(profile: &JobProfile, path: &str) -> Result<()> {
     let mut file = File::create(path)
         .context(format!("Failed to create CSV file: {}", path))?;
 
+    // Write filter comment if filters were applied
+    if let Some(ref filter) = profile.filter {
+        if let (Some(filtered_count), Some(filtered_rss)) = (profile.filtered_process_count, profile.filtered_total_rss_kib) {
+            write!(file, "# Filter: ")?;
+            if let Some(ref exclude) = filter.exclude_pattern {
+                write!(file, "exclude='{}' ", exclude)?;
+            }
+            if let Some(ref include) = filter.include_pattern {
+                write!(file, "include='{}' ", include)?;
+            }
+            writeln!(file, "({} processes filtered out, {} KiB total)", filtered_count, filtered_rss)?;
+        }
+    }
+
     // Write header
     writeln!(file, "pid,ppid,command,max_rss_kib,max_rss_mib,first_seen,last_seen")?;
 
@@ -37,6 +51,20 @@ pub fn export_timeline_csv(profile: &JobProfile, path: &str) -> Result<()> {
 
     let timeline = profile.timeline.as_ref()
         .context("Timeline data not available. This is a bug - timeline should be tracked when --timeline is used.")?;
+
+    // Write filter comment if filters were applied
+    if let Some(ref filter) = profile.filter {
+        write!(file, "# Filter: ")?;
+        if let Some(ref exclude) = filter.exclude_pattern {
+            write!(file, "exclude='{}' ", exclude)?;
+        }
+        if let Some(ref include) = filter.include_pattern {
+            write!(file, "include='{}' ", include)?;
+        }
+        writeln!(file)?;
+        writeln!(file, "# Note: total_rss_kib and process_count both show all processes (unfiltered)")?;
+        writeln!(file, "# Filtering only affects the per-process CSV export and final summary display")?;
+    }
 
     // Write header
     writeln!(file, "timestamp,elapsed_seconds,total_rss_kib,total_rss_mib,process_count")?;

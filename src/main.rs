@@ -24,9 +24,11 @@ fn main() {
             csv,
             timeline,
             silent,
+            exclude,
+            include,
             command,
         } => {
-            match run_command(command, interval, json, quiet, csv, timeline, silent) {
+            match run_command(command, interval, json, quiet, csv, timeline, silent, exclude, include) {
                 Ok(exit_code) => {
                     // Exit with the child process's exit code
                     process::exit(exit_code);
@@ -48,6 +50,8 @@ fn run_command(
     csv_path: Option<String>,
     timeline_path: Option<String>,
     silent: bool,
+    exclude: Option<String>,
+    include: Option<String>,
 ) -> anyhow::Result<i32> {
     // Create platform-specific inspector
     let inspector = inspector::create_inspector();
@@ -56,7 +60,7 @@ fn run_command(
     let track_timeline = timeline_path.is_some();
 
     // Run and profile the command
-    let profile = sampler::run_and_profile(command, interval_ms, track_timeline, silent, &inspector)?;
+    let profile = sampler::run_and_profile(command, interval_ms, track_timeline, silent, exclude, include, &inspector)?;
 
     // Capture exit code before consuming profile
     let exit_code = profile.exit_code.unwrap_or(0);

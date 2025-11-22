@@ -24,8 +24,7 @@ impl ProcessInspector for MacProcessInspector {
             anyhow::bail!("ps command failed with status: {}", output.status);
         }
 
-        let stdout = String::from_utf8(output.stdout)
-            .context("ps output was not valid UTF-8")?;
+        let stdout = String::from_utf8(output.stdout).context("ps output was not valid UTF-8")?;
 
         parse_ps_output(&stdout)
     }
@@ -50,17 +49,23 @@ fn parse_ps_output(output: &str) -> Result<Vec<ProcessSample>> {
         let mut parts = line.split_whitespace();
 
         let pid = match parts.next() {
-            Some(p) => p.parse::<i32>().context(format!("Failed to parse PID from: {}", p))?,
+            Some(p) => p
+                .parse::<i32>()
+                .context(format!("Failed to parse PID from: {}", p))?,
             None => continue,
         };
 
         let ppid = match parts.next() {
-            Some(p) => p.parse::<i32>().context(format!("Failed to parse PPID from: {}", p))?,
+            Some(p) => p
+                .parse::<i32>()
+                .context(format!("Failed to parse PPID from: {}", p))?,
             None => continue,
         };
 
         let rss_kib = match parts.next() {
-            Some(r) => r.parse::<u64>().context(format!("Failed to parse RSS from: {}", r))?,
+            Some(r) => r
+                .parse::<u64>()
+                .context(format!("Failed to parse RSS from: {}", r))?,
             None => continue,
         };
 

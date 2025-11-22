@@ -22,8 +22,7 @@ pub fn run_and_profile(
     }
 
     // Spawn the command
-    let mut child = spawn_command(&command, silent)
-        .context("Failed to start command")?;
+    let mut child = spawn_command(&command, silent).context("Failed to start command")?;
 
     let root_pid = child.id() as i32;
     let mut state = JobState::new(track_timeline);
@@ -73,7 +72,13 @@ pub fn run_and_profile(
     let exit_code = exit_status.and_then(|s| s.code());
 
     // Convert state to profile
-    state.into_profile(command, interval_ms, exit_code, exclude_pattern, include_pattern)
+    state.into_profile(
+        command,
+        interval_ms,
+        exit_code,
+        exclude_pattern,
+        include_pattern,
+    )
 }
 
 fn spawn_command(command: &[String], silent: bool) -> Result<Child> {
@@ -98,10 +103,7 @@ fn spawn_command(command: &[String], silent: bool) -> Result<Child> {
 }
 
 /// Sample all processes and filter to those in the job tree
-fn sample_job_tree(
-    inspector: &impl ProcessInspector,
-    root_pid: i32,
-) -> Result<JobSnapshot> {
+fn sample_job_tree(inspector: &impl ProcessInspector, root_pid: i32) -> Result<JobSnapshot> {
     let all_processes = inspector.snapshot_all()?;
 
     // Build PID -> ProcessSample map and PID -> PPID map
@@ -161,11 +163,11 @@ mod tests {
     #[test]
     fn test_find_job_pids_simple() {
         let mut ppid_map = HashMap::new();
-        ppid_map.insert(100, 1);  // root process, parent is init
+        ppid_map.insert(100, 1); // root process, parent is init
         ppid_map.insert(200, 100); // child of root
         ppid_map.insert(300, 100); // another child of root
         ppid_map.insert(400, 200); // grandchild
-        ppid_map.insert(500, 50);  // unrelated process
+        ppid_map.insert(500, 50); // unrelated process
 
         let job_pids = find_job_pids(100, &ppid_map);
 

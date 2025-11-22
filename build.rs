@@ -6,8 +6,14 @@ include!("src/cli.rs");
 
 fn main() -> std::io::Result<()> {
     // Set build-time environment variables for version info
-    println!("cargo:rustc-env=BUILD_DATE={}", chrono::Utc::now().format("%Y-%m-%d"));
-    println!("cargo:rustc-env=BUILD_TARGET={}", std::env::var("TARGET").unwrap());
+    println!(
+        "cargo:rustc-env=BUILD_DATE={}",
+        chrono::Utc::now().format("%Y-%m-%d")
+    );
+    println!(
+        "cargo:rustc-env=BUILD_TARGET={}",
+        std::env::var("TARGET").unwrap()
+    );
 
     // Generate man page using clap_mangen
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
@@ -22,7 +28,10 @@ fn main() -> std::io::Result<()> {
 
     fs::write(man_dir.join("memwatch.1"), buffer)?;
 
-    println!("cargo:warning=Man page generated at {:?}", man_dir.join("memwatch.1"));
+    println!(
+        "cargo:warning=Man page generated at {:?}",
+        man_dir.join("memwatch.1")
+    );
 
     Ok(())
 }

@@ -125,7 +125,11 @@ impl JobState {
             max_total_rss_kib: 0,
             samples: 0,
             process_stats: HashMap::new(),
-            timeline: if track_timeline { Some(Vec::new()) } else { None },
+            timeline: if track_timeline {
+                Some(Vec::new())
+            } else {
+                None
+            },
         }
     }
 
@@ -135,7 +139,8 @@ impl JobState {
 
         // Track timeline if requested
         if let Some(timeline) = &mut self.timeline {
-            let elapsed_seconds = (snapshot.timestamp - self.start_time).num_milliseconds() as f64 / 1000.0;
+            let elapsed_seconds =
+                (snapshot.timestamp - self.start_time).num_milliseconds() as f64 / 1000.0;
             timeline.push(TimelinePoint {
                 timestamp: snapshot.timestamp,
                 elapsed_seconds,
@@ -191,7 +196,8 @@ impl JobState {
                 include_pattern.as_deref(),
             )?;
 
-            let (filtered_count, filtered_rss) = filter_info.expect("filter_info must be Some when patterns provided");
+            let (filtered_count, filtered_rss) =
+                filter_info.expect("filter_info must be Some when patterns provided");
 
             (
                 filtered_processes,
@@ -247,11 +253,17 @@ fn apply_filter(
     use anyhow::Context;
 
     let exclude_regex = match exclude_pattern {
-        Some(p) => Some(Regex::new(p).context(format!("Invalid exclude pattern '{}': must be valid regex", p))?),
+        Some(p) => Some(Regex::new(p).context(format!(
+            "Invalid exclude pattern '{}': must be valid regex",
+            p
+        ))?),
         None => None,
     };
     let include_regex = match include_pattern {
-        Some(p) => Some(Regex::new(p).context(format!("Invalid include pattern '{}': must be valid regex", p))?),
+        Some(p) => Some(Regex::new(p).context(format!(
+            "Invalid include pattern '{}': must be valid regex",
+            p
+        ))?),
         None => None,
     };
 
@@ -424,9 +436,7 @@ mod tests {
 
     #[test]
     fn test_apply_filter_preserves_process_data() {
-        let processes = vec![
-            create_test_process(42, "test_app", 12345),
-        ];
+        let processes = vec![create_test_process(42, "test_app", 12345)];
 
         let (filtered, _) = apply_filter(processes, None, Some("test")).unwrap();
 

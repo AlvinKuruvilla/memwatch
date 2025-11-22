@@ -1,4 +1,4 @@
-use crate::types::{memory, JobProfile};
+use crate::types::{JobProfile, ProcessStats, memory};
 use anyhow::Result;
 use std::collections::HashMap;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
@@ -45,26 +45,35 @@ pub fn print_summary(profile: &JobProfile) {
 
     // Job header
     println!("\nJob: {}", profile.command.join(" "));
-    print!("Duration: {}  |  Samples: {}",
-           format_duration(profile.duration_seconds),
-           profile.samples);
+    print!(
+        "Duration: {}  |  Samples: {}",
+        format_duration(profile.duration_seconds),
+        profile.samples
+    );
     println!();
 
     // Filter out processes with 0 RSS for display
-    let valid_processes: Vec<_> = profile.processes.iter()
+    let valid_processes: Vec<_> = profile
+        .processes
+        .iter()
         .filter(|p| p.max_rss_kib > 0)
         .collect();
 
     if profile.max_total_rss_kib == 0 {
         // No data captured at all
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
-        println!("\nMax total RSS: {} (no data captured)",
-                 format_memory(profile.max_total_rss_kib));
+        println!(
+            "\nMax total RSS: {} (no data captured)",
+            format_memory(profile.max_total_rss_kib)
+        );
         let _ = stdout.reset();
 
         println!("\n⚠ Warning: The command completed too quickly to capture memory usage.");
         println!("\nPossible reasons:");
-        println!("  • Command executed in < {}ms (sampling interval)", profile.interval_ms);
+        println!(
+            "  • Command executed in < {}ms (sampling interval)",
+            profile.interval_ms
+        );
         println!("  • Process spawned child and immediately exited");
         println!("  • Command failed or was killed immediately");
         println!("\nSuggestions:");
@@ -76,8 +85,10 @@ pub fn print_summary(profile: &JobProfile) {
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
         println!("\n⚠ Warning: All processes were filtered out.");
         let _ = stdout.reset();
-        println!("\nTotal job memory was {}, but no processes match the filter criteria.",
-                 format_memory(profile.max_total_rss_kib));
+        println!(
+            "\nTotal job memory was {}, but no processes match the filter criteria.",
+            format_memory(profile.max_total_rss_kib)
+        );
 
         if let Some(ref filter) = profile.filter {
             println!("\nActive filters:");
@@ -93,13 +104,18 @@ pub fn print_summary(profile: &JobProfile) {
     } else if valid_processes.is_empty() {
         // No valid processes (no filter applied)
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)));
-        println!("\nMax total RSS: {} (no data captured)",
-                 format_memory(profile.max_total_rss_kib));
+        println!(
+            "\nMax total RSS: {} (no data captured)",
+            format_memory(profile.max_total_rss_kib)
+        );
         let _ = stdout.reset();
 
         println!("\n⚠ Warning: The command completed too quickly to capture memory usage.");
         println!("\nPossible reasons:");
-        println!("  • Command executed in < {}ms (sampling interval)", profile.interval_ms);
+        println!(
+            "  • Command executed in < {}ms (sampling interval)",
+            profile.interval_ms
+        );
         println!("  • Process spawned child and immediately exited");
         println!("  • Command failed or was killed immediately");
         println!("\nSuggestions:");
@@ -114,7 +130,10 @@ pub fn print_summary(profile: &JobProfile) {
         println!();
 
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
-        print!("  Total peak:    {}", format_memory(profile.max_total_rss_kib));
+        print!(
+            "  Total peak:    {}",
+            format_memory(profile.max_total_rss_kib)
+        );
         let _ = stdout.reset();
 
         // Show filtering info if applicable
@@ -127,7 +146,10 @@ pub fn print_summary(profile: &JobProfile) {
 
         if let Some(max_process) = valid_processes.first() {
             let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::Green)));
-            print!("  Process peak:  {} ", format_memory(max_process.max_rss_kib));
+            print!(
+                "  Process peak:  {} ",
+                format_memory(max_process.max_rss_kib)
+            );
             let _ = stdout.reset();
             let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
             print!("(pid {})", max_process.pid);
@@ -141,21 +163,32 @@ pub fn print_summary(profile: &JobProfile) {
         let _ = stdout.reset();
 
         // Show filter annotation in header if applicable
-        if let (Some(filtered_count), Some(filtered_rss)) = (profile.filtered_process_count, profile.filtered_total_rss_kib) {
+        if let (Some(filtered_count), Some(filtered_rss)) = (
+            profile.filtered_process_count,
+            profile.filtered_total_rss_kib,
+        ) {
             let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
-            print!(" ({} processes filtered out, totaling {})", filtered_count, format_memory(filtered_rss));
+            print!(
+                " ({} processes filtered out, totaling {})",
+                filtered_count,
+                format_memory(filtered_rss)
+            );
             let _ = stdout.reset();
         }
         println!();
 
         // Table header
         let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
-        println!("  {:>5}  {:>10}  {:>8}  {}", "PID", "MEMORY", "TIME", "COMMAND");
+        println!(
+            "  {:>5}  {:>10}  {:>8}  {}",
+            "PID", "MEMORY", "TIME", "COMMAND"
+        );
         let _ = stdout.reset();
 
         // Table rows
         for proc in valid_processes {
-            let elapsed_secs = (proc.peak_time - profile.start_time).num_milliseconds() as f64 / 1000.0;
+            let elapsed_secs =
+                (proc.peak_time - profile.start_time).num_milliseconds() as f64 / 1000.0;
 
             // PID (dimmed)
             let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
@@ -186,7 +219,10 @@ pub fn print_summary(profile: &JobProfile) {
 
             // Table header
             let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
-            println!("  {:24}  {:>9}  {:>12}", "COMMAND", "PROCESSES", "TOTAL PEAK");
+            println!(
+                "  {:24}  {:>9}  {:>12}",
+                "COMMAND", "PROCESSES", "TOTAL PEAK"
+            );
             let _ = stdout.reset();
 
             // Sort by total RSS (descending)
@@ -197,7 +233,8 @@ pub fn print_summary(profile: &JobProfile) {
             for (cmd_name, (count, total_rss)) in group_vec {
                 print!("  {:24}  ", cmd_name);
 
-                let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
+                let _ =
+                    stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
                 print!("{:>9}  ", count);
                 let _ = stdout.reset();
 
@@ -212,7 +249,7 @@ pub fn print_summary(profile: &JobProfile) {
 }
 
 /// Compute process groups by command name
-fn compute_process_groups(processes: &[crate::types::ProcessStats]) -> HashMap<String, (usize, u64)> {
+fn compute_process_groups(processes: &[ProcessStats]) -> HashMap<String, (usize, u64)> {
     let mut groups: HashMap<String, (usize, u64)> = HashMap::new();
 
     for proc in processes.iter().filter(|p| p.max_rss_kib > 0) {

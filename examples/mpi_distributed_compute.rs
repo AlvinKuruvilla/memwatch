@@ -298,6 +298,9 @@ fn main() {
 
     if rank == 0 {
         println!("\n=== Execution Complete ===");
-        println!("Use 'memwatch run -- mpirun -n {} ...' to profile this workload", world_size);
+        println!(
+            "Use 'memwatch run -- mpirun -n {} ...' to profile this workload",
+            world_size
+        );
     }
 }

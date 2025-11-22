@@ -15,15 +15,17 @@ impl LinuxProcessInspector {
 
     fn read_proc_stat(&self, pid: i32) -> Result<(i32, String)> {
         let stat_path = format!("/proc/{}/stat", pid);
-        let stat_content = fs::read_to_string(&stat_path)
-            .context(format!("Failed to read {}", stat_path))?;
+        let stat_content =
+            fs::read_to_string(&stat_path).context(format!("Failed to read {}", stat_path))?;
 
         // Parse /proc/[pid]/stat format:
         // pid (comm) state ppid ...
         // We need to handle command names with spaces and parentheses
-        let start_paren = stat_content.find('(')
+        let start_paren = stat_content
+            .find('(')
             .context("Invalid stat format: missing '('")?;
-        let end_paren = stat_content.rfind(')')
+        let end_paren = stat_content
+            .rfind(')')
             .context("Invalid stat format: missing ')'")?;
 
         let after_comm = &stat_content[end_paren + 1..].trim();
@@ -34,8 +36,7 @@ impl LinuxProcessInspector {
         }
 
         // Field 0 is state, field 1 is ppid
-        let ppid = fields[1].parse::<i32>()
-            .context("Failed to parse ppid")?;
+        let ppid = fields[1].parse::<i32>().context("Failed to parse ppid")?;
 
         let comm = stat_content[start_paren + 1..end_paren].to_string();
 
@@ -44,14 +45,15 @@ impl LinuxProcessInspector {
 
     fn read_proc_status_rss(&self, pid: i32) -> Result<u64> {
         let status_path = format!("/proc/{}/status", pid);
-        let status_content = fs::read_to_string(&status_path)
-            .context(format!("Failed to read {}", status_path))?;
+        let status_content =
+            fs::read_to_string(&status_path).context(format!("Failed to read {}", status_path))?;
 
         for line in status_content.lines() {
             if line.starts_with("VmRSS:") {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    let rss_kib = parts[1].parse::<u64>()
+                    let rss_kib = parts[1]
+                        .parse::<u64>()
                         .context("Failed to parse VmRSS value")?;
                     return Ok(rss_kib);
                 }
@@ -64,8 +66,8 @@ impl LinuxProcessInspector {
 
     fn read_cmdline(&self, pid: i32) -> Result<String> {
         let cmdline_path = format!("/proc/{}/cmdline", pid);
-        let cmdline_content = fs::read(&cmdline_path)
-            .context(format!("Failed to read {}", cmdline_path))?;
+        let cmdline_content =
+            fs::read(&cmdline_path).context(format!("Failed to read {}", cmdline_path))?;
 
         if cmdline_content.is_empty() {
             // Kernel thread or empty cmdline - use comm from stat
@@ -89,8 +91,7 @@ impl ProcessInspector for LinuxProcessInspector {
         let proc_path = Path::new("/proc");
         let mut processes = Vec::new();
 
-        let entries = fs::read_dir(proc_path)
-            .context("Failed to read /proc directory")?;
+        let entries = fs::read_dir(proc_path).context("Failed to read /proc directory")?;
 
         for entry in entries {
             let entry = match entry {

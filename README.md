@@ -72,6 +72,10 @@ Colors automatically disable when piping to files.
 
 Automatically aggregates memory by command name to show which programs consumed the most total memory.
 
+### ✔ Process filtering
+
+Filter display to show only relevant processes while maintaining accurate total memory accounting. Supports regex patterns for flexible include/exclude rules.
+
 ### ✔ JSON export
 
 Perfect for dashboards, plotting, or regression tracking.
@@ -174,6 +178,34 @@ Hide stdout/stderr from the profiled command (useful for noisy commands):
 memwatch run --silent -- mpirun -n 8 ./verbose_app
 ```
 
+### Process filtering
+
+Filter processes from output while preserving total memory accounting:
+
+```bash
+# Exclude processes matching regex
+memwatch run --exclude 'cargo|rustc' -- cargo test
+
+# Only include processes matching regex
+memwatch run --include 'dis_cq' -- mpirun -n 8 cargo test
+
+# Combine both (include first, then exclude)
+memwatch run --include 'test' --exclude 'cargo' -- cargo test
+```
+
+**How filtering works:**
+- `--exclude <PATTERN>`: Hide processes matching regex pattern from output
+- `--include <PATTERN>`: Only show processes matching regex pattern
+- Both flags can be combined: include is applied first, then exclude
+- **Total RSS always includes all processes** (filtering only affects display)
+- Filter metadata shown in output: "2 processes filtered out, 2.1 GiB total"
+- Invalid regex patterns produce clear error messages
+
+**Use cases:**
+- Hide build overhead: `--exclude 'cargo|rustc|cc|ld'`
+- Focus on workers: `--include 'worker|benchmark'`
+- Separate infrastructure from computation in MPI/distributed jobs
+
 ---
 
 ## 📦 Output Formats
@@ -209,7 +241,12 @@ Structured and stable:
       "first_seen": "2025-11-20T18:02:40Z",
       "last_seen": "2025-11-20T18:05:10Z"
     }
-  ]
+  ],
+  "filter": {
+    "exclude_pattern": "cargo"
+  },
+  "filtered_process_count": 8,
+  "filtered_total_rss_kib": 400000
 }
 ```
 
@@ -220,9 +257,12 @@ Structured and stable:
 Exports peak memory usage for each process:
 
 ```csv
+# Filter: exclude='cargo' (8 processes filtered out, 400000 KiB total)
 pid,ppid,command,max_rss_kib,max_rss_mib,first_seen,last_seen
-1234,1233,"cargo test",102400,100.00,2025-11-20T18:02:34Z,2025-11-20T18:05:55Z
+1234,1233,"rustc",102400,100.00,2025-11-20T18:02:34Z,2025-11-20T18:05:55Z
 ```
+
+When filters are applied, CSV includes header comments showing which processes were excluded.
 
 #### Timeline CSV (`--timeline`)
 

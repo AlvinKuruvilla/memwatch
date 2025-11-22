@@ -14,6 +14,9 @@ cargo build --release
 ```
 Binary location: `target/release/memwatch`
 
+**Key Dependencies:**
+- `regex` 1.10: Process filtering with include/exclude patterns
+
 ### Running Tests
 ```bash
 cargo test
@@ -43,6 +46,11 @@ cargo run -- run --timeline timeline.csv -- <command>
 
 # Combined exports
 cargo run -- run --csv procs.csv --timeline time.csv -- <command>
+
+# Process filtering
+cargo run -- run --exclude 'cargo|rustc' -- cargo test
+cargo run -- run --include 'dis_cq' -- mpirun -n 8 cargo test
+cargo run -- run --include 'test' --exclude 'cargo' -- cargo test
 ```
 
 ## Architecture
@@ -102,7 +110,12 @@ examples/
 - `timestamp: DateTime<Utc>`
 - `elapsed_seconds: f64`
 - `total_rss_kib: u64`
-- `process_count: usize`
+- `process_count: usize` - Reflects all processes (unfiltered)
+
+**FilterConfig**: Process filtering configuration
+- `exclude_pattern: Option<String>` - Regex pattern to exclude from display
+- `include_pattern: Option<String>` - Regex pattern to include in display
+- Included in JobProfile when filters are active
 
 **Job Metrics**:
 - `max_total_rss_kib`: Peak sum of RSS across all job processes at any single moment
@@ -187,13 +200,35 @@ Exports time-series data:
 memwatch run [OPTIONS] -- <command> [args...]
 
 Options:
-  -i, --interval <ms>    Sampling interval in milliseconds (default: 500)
-      --json             Output JSON instead of human-readable text
-      --quiet            Suppress output (useful with --json)
-      --csv <FILE>       Export per-process peak RSS to CSV file
-      --timeline <FILE>  Export time-series memory data to CSV file
-      --silent           Suppress command output (hide stdout/stderr from profiled command)
+  -i, --interval <ms>      Sampling interval in milliseconds (default: 500)
+      --json               Output JSON instead of human-readable text
+      --quiet              Suppress output (useful with --json)
+      --csv <FILE>         Export per-process peak RSS to CSV file
+      --timeline <FILE>    Export time-series memory data to CSV file
+      --silent             Suppress command output (hide stdout/stderr from profiled command)
+      --exclude <PATTERN>  Exclude processes matching regex from output
+      --include <PATTERN>  Only include processes matching regex in output
 ```
+
+### Process Filtering
+
+**Behavior**:
+- `--exclude`: Processes matching this regex pattern are hidden from output
+- `--include`: Only processes matching this regex are shown in output
+- Both flags can be combined: include is applied first, then exclude
+- **Total RSS always reflects all processes** (filtering only affects display)
+- Filter metadata is tracked and shown in all output formats
+
+**Filtering Logic**:
+- Applied in `types.rs::apply_filter()` after job completion
+- Invalid regex patterns produce clear error messages (validated before filtering)
+- All processes filtered out triggers special warning message
+- Filters apply to human-readable, JSON, and CSV outputs consistently
+
+**Filter Metadata** (in JobProfile):
+- `filter: Option<FilterConfig>` - Present when filters are active
+- `filtered_process_count: Option<usize>` - Number of processes excluded
+- `filtered_total_rss_kib: Option<u64>` - Total RSS of excluded processes
 
 ## Key Implementation Considerations
 
@@ -210,6 +245,8 @@ Options:
 - Command fails to start: clear error message, non-zero exit
 - **Quick-exit commands**: Show helpful message with suggestion to use shorter interval
 - **0 RSS processes**: Filtered from output, with explanation when all processes have 0 RSS
+- **Invalid regex patterns**: Validated before filtering, produces clear error with pattern shown
+- **All processes filtered out**: Special warning message showing filter criteria and suggestions
 - SIGINT forwarding: forward to root PID and children, then cleanup
 - Permission errors: skip with warning
 - CSV/Timeline export errors: Clear context with file path in error message

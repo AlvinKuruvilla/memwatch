@@ -1,0 +1,32 @@
+[package]
+name = "build_example"
+version = "1.0.0"
+edition = "2021"
+authors = ["Build Pipeline Example"]
+description = "Generated binary for memwatch build pipeline example"
+
+# Binary target
+[[bin]]
+name = "build_example"
+path = "src/main.rs"
+
+# Library target (for tests)
+[lib]
+name = "build_example"
+path = "src/lib.rs"
+
+[dependencies]
+# No dependencies needed - this is intentionally minimal
+# to focus on compilation memory usage
+
+[profile.dev]
+# Development profile - faster compilation
+opt-level = 0
+debug = true
+
+[profile.release]
+# Release profile - more optimization (more memory usage)
+opt-level = 3
+debug = false
+lto = false  # Disable LTO to show more linker processes
+codegen-units = 16  # Allow parallel codegen (more rustc processes)

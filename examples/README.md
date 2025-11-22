@@ -2,6 +2,53 @@
 
 This directory contains example programs demonstrating memwatch's capabilities for profiling different types of workloads.
 
+## Quick Overview
+
+| Example | Languages | Use Case | Key Feature |
+|---------|-----------|----------|-------------|
+| [Build Pipeline](#build-pipeline) | Python, C, Rust, Node.js, Perl | CI/CD workflows | Multi-program process trees (5 languages) |
+| [MPI Distributed Compute](#mpi-distributed-computation) | Rust (via MPI) | HPC/Scientific computing | Distributed memory tracking |
+
+## Build Pipeline
+
+**Directory:** `build_pipeline/`
+
+A comprehensive multi-program example that simulates a realistic CI/CD build pipeline with code generation (Python), C library compilation (cc), Rust compilation (rustc → cc → ld), testing (Node.js), data validation (Perl), and packaging (Python). Spans **5 programming languages**.
+
+### Quick Start
+
+```bash
+cd examples/build_pipeline
+
+# Run the full pipeline
+memwatch run -- make
+
+# Try different problem sizes
+memwatch run -- make SIZE=large
+
+# See all options
+make help
+```
+
+### What This Demonstrates
+
+- **Multi-language tracking**: Python, C, Rust compiler, Node.js, Perl all in one job (5 languages)
+- **Complex process trees**: Real compilation spawns cargo → rustc → cc → ld (4+ levels deep)
+- **Memory phases**: Six distinct phases with different memory characteristics
+- **Process filtering**: Many helper processes that can be filtered with `--exclude` and `--include`
+- **Timeline visualization**: Clear phases visible in `--timeline` output
+- **Configurable workload**: Small/medium/large problem sizes
+- **Parallel vs sequential**: Compare `make` vs `make -j` memory patterns
+
+### Use Cases
+
+1. **Build optimization**: Find which build phase uses the most memory
+2. **CI/CD planning**: Determine how much RAM your CI runners need
+3. **Compiler profiling**: Understand rustc memory usage with different codegen-units
+4. **Tool comparison**: See memory differences between debug vs release builds
+
+See [build_pipeline/README.md](build_pipeline/README.md) for complete documentation.
+
 ## MPI Distributed Computation
 
 **File:** `mpi_distributed_compute.rs`
@@ -225,3 +272,56 @@ mpirun -n 4 cargo run --example mpi_distributed_compute
 - [Rust MPI Crate](https://docs.rs/mpi/)
 - [zeroasset2 Project](https://github.com/privacy-scaling-explorations/zeroasset2) - Real-world distributed ZK proofs
 - [DIZK Paper](https://eprint.iacr.org/2018/691) - Distributed FFT algorithms for ZK systems
+
+## Choosing an Example
+
+### When to Use Build Pipeline Example
+
+Use the **build pipeline** example when you want to:
+- Profile multi-language workflows (Python + Rust + Node.js)
+- Understand build system memory usage
+- Demonstrate deep process trees (3+ levels)
+- Show sequential phases with distinct memory patterns
+- Test memwatch's filtering capabilities (many helper processes)
+- Profile CI/CD pipelines
+
+**Best for:** Development workflows, build optimization, CI/CD planning
+
+### When to Use MPI Example
+
+Use the **MPI distributed compute** example when you want to:
+- Profile HPC/scientific computing workloads
+- Track distributed memory across multiple ranks
+- Understand memory scaling with process count
+- Demonstrate parallel computation patterns
+- Profile zero-knowledge proof systems or similar
+
+**Best for:** HPC applications, distributed systems, scientific computing
+
+## Example Comparison
+
+| Aspect | Build Pipeline | MPI Distributed Compute |
+|--------|----------------|-------------------------|
+| **Languages** | Python, C, Rust, Node.js, Perl (5 total) | Rust (all processes same binary) |
+| **Process Tree Depth** | Deep (3-4 levels) | Flat (mpirun + ranks) |
+| **Process Tree Width** | Narrow (1-3 concurrent) | Wide (np ranks) |
+| **Memory Pattern** | Sequential phases | Parallel uniform |
+| **Execution Time** | 10-60 seconds | 5-10 seconds |
+| **Prerequisites** | python3, cc, node, perl | OpenMPI/MPICH |
+| **Workload Type** | Build pipeline | Distributed computation |
+| **Filtering Demo** | Excellent (many tools) | Good (rank filtering) |
+| **Timeline Phases** | Distinct (6 phases) | Synchronized (1 phase) |
+| **Realism** | CI/CD workflows | Scientific computing |
+| **Complexity** | High (multi-tool) | Moderate (single tool) |
+
+## Contributing Examples
+
+Have an interesting memwatch use case? Consider contributing an example:
+
+1. **Target a specific domain**: Build systems, data pipelines, web servers, etc.
+2. **Show memwatch features**: Process trees, filtering, timeline, etc.
+3. **Use realistic workloads**: Real tools and actual operations
+4. **Include documentation**: README with setup, usage, and expected output
+5. **Cross-platform support**: Works on both macOS and Linux
+
+See [CLAUDE.md](../CLAUDE.md) for project contribution guidelines.

@@ -1,0 +1,11 @@
+# Generated Rust source files
+src/*.rs
+
+# Compiled binaries
+target/
+
+# Distribution packages
+dist/
+
+# macOS
+.DS_Store

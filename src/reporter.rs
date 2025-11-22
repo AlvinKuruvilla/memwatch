@@ -1,6 +1,8 @@
 use crate::types::{JobProfile, ProcessStats, memory};
 use anyhow::Result;
+use colored_json::ToColoredJson;
 use std::collections::HashMap;
+use std::io::IsTerminal;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Format bytes in KiB to human-readable format (KiB, MiB, GiB)
@@ -266,10 +268,31 @@ fn compute_process_groups(processes: &[ProcessStats]) -> HashMap<String, (usize,
     groups
 }
 
-/// Print JSON output
+/// Print JSON output with optional colorization
+///
+/// Automatically detects if output is to a terminal and colorizes accordingly.
+/// Colors are disabled when piping to files or when stdout is not a TTY.
 pub fn print_json(profile: &JobProfile) -> Result<()> {
-    let json = serde_json::to_string_pretty(profile)?;
-    println!("{}", json);
+    // First, serialize to pretty JSON
+    let json_value = serde_json::to_value(profile)?;
+    let json_string = serde_json::to_string_pretty(&json_value)?;
+
+    // Check if stdout is a terminal (TTY)
+    // If not (e.g., piping to file), disable colors
+    if std::io::stdout().is_terminal() {
+        // Colorize the JSON output
+        match json_string.to_colored_json_auto() {
+            Ok(colored) => println!("{}", colored),
+            Err(_) => {
+                // Fallback to plain JSON if colorization fails
+                println!("{}", json_string);
+            }
+        }
+    } else {
+        // No colorization for non-terminal output (pipes, redirects, etc.)
+        println!("{}", json_string);
+    }
+
     Ok(())
 }
 

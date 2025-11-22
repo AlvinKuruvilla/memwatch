@@ -294,3 +294,155 @@ fn apply_filter(
 
     Ok((filtered, filter_info))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_process(pid: i32, command: &str, rss_kib: u64) -> ProcessStats {
+        ProcessStats {
+            pid,
+            ppid: 1,
+            command: command.to_string(),
+            max_rss_kib: rss_kib,
+            first_seen: Utc::now(),
+            last_seen: Utc::now(),
+            peak_time: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn test_apply_filter_no_filters() {
+        let processes = vec![
+            create_test_process(1, "cargo test", 100),
+            create_test_process(2, "rustc", 200),
+        ];
+
+        let (filtered, info) = apply_filter(processes, None, None).unwrap();
+
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(info, None);
+    }
+
+    #[test]
+    fn test_apply_filter_exclude_pattern() {
+        let processes = vec![
+            create_test_process(1, "cargo test", 100),
+            create_test_process(2, "rustc", 200),
+            create_test_process(3, "sleep", 50),
+        ];
+
+        let (filtered, info) = apply_filter(processes, Some("cargo|rustc"), None).unwrap();
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].command, "sleep");
+        assert_eq!(info, Some((2, 300))); // 2 processes, 300 KiB total
+    }
+
+    #[test]
+    fn test_apply_filter_include_pattern() {
+        let processes = vec![
+            create_test_process(1, "cargo test", 100),
+            create_test_process(2, "rustc", 200),
+            create_test_process(3, "sleep", 50),
+        ];
+
+        let (filtered, info) = apply_filter(processes, None, Some("^sleep")).unwrap();
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].command, "sleep");
+        assert_eq!(info, Some((2, 300))); // 2 processes filtered out
+    }
+
+    #[test]
+    fn test_apply_filter_include_then_exclude() {
+        let processes = vec![
+            create_test_process(1, "test_worker_1", 100),
+            create_test_process(2, "test_worker_2", 200),
+            create_test_process(3, "test_helper", 50),
+            create_test_process(4, "cargo", 150),
+        ];
+
+        // Include test*, exclude test_helper
+        let (filtered, info) = apply_filter(processes, Some("helper"), Some("test")).unwrap();
+
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(filtered[0].command, "test_worker_1");
+        assert_eq!(filtered[1].command, "test_worker_2");
+        assert_eq!(info, Some((2, 200))); // helper (50) + cargo (150)
+    }
+
+    #[test]
+    fn test_apply_filter_all_filtered_out() {
+        let processes = vec![
+            create_test_process(1, "cargo test", 100),
+            create_test_process(2, "rustc", 200),
+        ];
+
+        let (filtered, info) = apply_filter(processes, Some(".*"), None).unwrap();
+
+        assert_eq!(filtered.len(), 0);
+        assert_eq!(info, Some((2, 300)));
+    }
+
+    #[test]
+    fn test_apply_filter_nothing_filtered() {
+        let processes = vec![
+            create_test_process(1, "test1", 100),
+            create_test_process(2, "test2", 200),
+        ];
+
+        let (filtered, info) = apply_filter(processes, Some("nonexistent"), None).unwrap();
+
+        assert_eq!(filtered.len(), 2);
+        assert_eq!(info, Some((0, 0))); // Filter was provided but nothing matched
+    }
+
+    #[test]
+    fn test_apply_filter_invalid_exclude_regex() {
+        let processes = vec![create_test_process(1, "test", 100)];
+
+        let result = apply_filter(processes, Some("[[invalid"), None);
+
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Invalid exclude pattern"));
+        assert!(err_msg.contains("[[invalid"));
+    }
+
+    #[test]
+    fn test_apply_filter_invalid_include_regex() {
+        let processes = vec![create_test_process(1, "test", 100)];
+
+        let result = apply_filter(processes, None, Some("[[invalid"));
+
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Invalid include pattern"));
+        assert!(err_msg.contains("[[invalid"));
+    }
+
+    #[test]
+    fn test_apply_filter_preserves_process_data() {
+        let processes = vec![
+            create_test_process(42, "test_app", 12345),
+        ];
+
+        let (filtered, _) = apply_filter(processes, None, Some("test")).unwrap();
+
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].pid, 42);
+        assert_eq!(filtered[0].max_rss_kib, 12345);
+        assert_eq!(filtered[0].command, "test_app");
+    }
+
+    #[test]
+    fn test_apply_filter_empty_input() {
+        let processes: Vec<ProcessStats> = vec![];
+
+        let (filtered, info) = apply_filter(processes, Some("test"), None).unwrap();
+
+        assert_eq!(filtered.len(), 0);
+        assert_eq!(info, Some((0, 0)));
+    }
+}

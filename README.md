@@ -198,7 +198,7 @@ memwatch run --include 'test' --exclude 'cargo' -- cargo test
 - `--include <PATTERN>`: Only show processes matching regex pattern
 - Both flags can be combined: include is applied first, then exclude
 - **Total RSS always includes all processes** (filtering only affects display)
-- Filter metadata shown in output: "2 processes filtered out, 2.1 GiB total"
+- Filter metadata shown in output: "2 processes filtered out, totaling 2.1 GiB"
 - Invalid regex patterns produce clear error messages
 
 **Use cases:**
@@ -257,7 +257,7 @@ Structured and stable:
 Exports peak memory usage for each process:
 
 ```csv
-# Filter: exclude='cargo' (8 processes filtered out, 400000 KiB total)
+# Filter: exclude='cargo' (8 processes filtered out, totaling 400000 KiB)
 pid,ppid,command,max_rss_kib,max_rss_mib,first_seen,last_seen
 1234,1233,"rustc",102400,100.00,2025-11-20T18:02:34Z,2025-11-20T18:05:55Z
 ```

@@ -15,7 +15,7 @@ fn write_filter_comment(
         if include_stats {
             if let (Some(filtered_count), Some(filtered_rss)) =
                 (profile.filtered_process_count, profile.filtered_total_rss_kib) {
-                writeln!(file, " ({} processes filtered out, {} KiB total)",
+                writeln!(file, " ({} processes filtered out, totaling {} KiB)",
                     filtered_count, filtered_rss)?;
             } else {
                 writeln!(file)?;

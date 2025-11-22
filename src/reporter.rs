@@ -143,7 +143,7 @@ pub fn print_summary(profile: &JobProfile) {
         // Show filter annotation in header if applicable
         if let (Some(filtered_count), Some(filtered_rss)) = (profile.filtered_process_count, profile.filtered_total_rss_kib) {
             let _ = stdout.set_color(ColorSpec::new().set_fg(Some(Color::White)).set_dimmed(true));
-            print!(" ({} processes filtered out, {} total)", filtered_count, format_memory(filtered_rss));
+            print!(" ({} processes filtered out, totaling {})", filtered_count, format_memory(filtered_rss));
             let _ = stdout.reset();
         }
         println!();

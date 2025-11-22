@@ -3,6 +3,13 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Memory unit conversion constants
+pub mod memory {
+    pub const KIB_PER_MIB: f64 = 1024.0;
+    pub const MIB_PER_GIB: f64 = 1024.0;
+    pub const KIB_PER_GIB: f64 = KIB_PER_MIB * MIB_PER_GIB;
+}
+
 /// Process filtering configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FilterConfig {
@@ -10,6 +17,32 @@ pub struct FilterConfig {
     pub exclude_pattern: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_pattern: Option<String>,
+}
+
+impl FilterConfig {
+    /// Format patterns as human-readable lines for display
+    pub fn display_patterns(&self) -> Vec<String> {
+        let mut lines = Vec::new();
+        if let Some(ref exclude) = self.exclude_pattern {
+            lines.push(format!("Exclude pattern: '{}'", exclude));
+        }
+        if let Some(ref include) = self.include_pattern {
+            lines.push(format!("Include pattern: '{}'", include));
+        }
+        lines
+    }
+
+    /// Format patterns for CSV comment
+    pub fn to_csv_comment(&self) -> String {
+        let mut parts = Vec::new();
+        if let Some(ref exclude) = self.exclude_pattern {
+            parts.push(format!("exclude='{}'", exclude));
+        }
+        if let Some(ref include) = self.include_pattern {
+            parts.push(format!("include='{}'", include));
+        }
+        parts.join(" ")
+    }
 }
 
 /// One snapshot of a single process at a point in time
@@ -149,16 +182,19 @@ impl JobState {
         all_processes.sort_by_key(|p| std::cmp::Reverse(p.max_rss_kib));
 
         // Apply filtering if patterns are provided
-        let (processes, filter_info) = if exclude_pattern.is_some() || include_pattern.is_some() {
-            apply_filter(&all_processes, exclude_pattern.as_deref(), include_pattern.as_deref())?
-        } else {
-            (all_processes, None)
-        };
+        let has_filter = exclude_pattern.is_some() || include_pattern.is_some();
 
-        // Create filter metadata if patterns were provided
-        let (filter, filtered_process_count, filtered_total_rss_kib) = if exclude_pattern.is_some() || include_pattern.is_some() {
-            let (filtered_count, filtered_rss) = filter_info.unwrap_or((0, 0));
+        let (processes, filter, filtered_process_count, filtered_total_rss_kib) = if has_filter {
+            let (filtered_processes, filter_info) = apply_filter(
+                all_processes,
+                exclude_pattern.as_deref(),
+                include_pattern.as_deref(),
+            )?;
+
+            let (filtered_count, filtered_rss) = filter_info.expect("filter_info must be Some when patterns provided");
+
             (
+                filtered_processes,
                 Some(FilterConfig {
                     exclude_pattern,
                     include_pattern,
@@ -167,7 +203,7 @@ impl JobState {
                 Some(filtered_rss),
             )
         } else {
-            (None, None, None)
+            (all_processes, None, None, None)
         };
 
         Ok(JobProfile {
@@ -188,10 +224,23 @@ impl JobState {
     }
 }
 
-/// Apply include/exclude filters to process list
-/// Returns (filtered_processes, Option<(filtered_count, filtered_rss_kib)>)
+/// Apply include/exclude filters to process list.
+///
+/// Takes ownership of the process list to avoid cloning. Processes that pass the filter
+/// are moved into the result vector, while filtered-out processes are only counted.
+///
+/// # Arguments
+/// * `processes` - Owned vector of processes to filter
+/// * `exclude_pattern` - Regex pattern to exclude (optional)
+/// * `include_pattern` - Regex pattern to include (optional)
+///
+/// # Returns
+/// Tuple of (filtered_processes, Option<(filtered_count, filtered_rss_kib)>)
+///
+/// # Errors
+/// Returns error if regex patterns are invalid
 fn apply_filter(
-    processes: &[ProcessStats],
+    processes: Vec<ProcessStats>,
     exclude_pattern: Option<&str>,
     include_pattern: Option<&str>,
 ) -> anyhow::Result<(Vec<ProcessStats>, Option<(usize, u64)>)> {
@@ -207,36 +256,37 @@ fn apply_filter(
     };
 
     let mut filtered = Vec::new();
-    let mut filtered_out = Vec::new();
+    let mut filtered_count = 0;
+    let mut filtered_rss = 0u64;
 
     for proc in processes {
-        let mut keep = true;
+        let mut should_include = true;
 
         // Apply include filter first
         if let Some(ref include) = include_regex {
-            keep = include.is_match(&proc.command);
+            should_include = include.is_match(&proc.command);
         }
 
         // Then apply exclude filter
-        if keep {
+        if should_include {
             if let Some(ref exclude) = exclude_regex {
                 if exclude.is_match(&proc.command) {
-                    keep = false;
+                    should_include = false;
                 }
             }
         }
 
-        if keep {
-            filtered.push(proc.clone());
+        if should_include {
+            filtered.push(proc);
         } else {
-            filtered_out.push(proc.clone());
+            // Only track statistics for filtered-out processes
+            filtered_count += 1;
+            filtered_rss += proc.max_rss_kib;
         }
     }
 
     // Always track filter info if patterns were provided, even if nothing was filtered
     let filter_info = if exclude_pattern.is_some() || include_pattern.is_some() {
-        let filtered_count = filtered_out.len();
-        let filtered_rss: u64 = filtered_out.iter().map(|p| p.max_rss_kib).sum();
         Some((filtered_count, filtered_rss))
     } else {
         None

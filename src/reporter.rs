@@ -1,19 +1,16 @@
-use crate::types::JobProfile;
+use crate::types::{memory, JobProfile};
 use anyhow::Result;
 use std::collections::HashMap;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Format bytes in KiB to human-readable format (KiB, MiB, GiB)
 fn format_memory(kib: u64) -> String {
-    const KIB_IN_MIB: f64 = 1024.0;
-    const KIB_IN_GIB: f64 = 1024.0 * 1024.0;
-
     let kib_f64 = kib as f64;
 
-    if kib_f64 >= KIB_IN_GIB {
-        format!("{:.1} GiB", kib_f64 / KIB_IN_GIB)
-    } else if kib_f64 >= KIB_IN_MIB {
-        format!("{:.1} MiB", kib_f64 / KIB_IN_MIB)
+    if kib_f64 >= memory::KIB_PER_GIB {
+        format!("{:.1} GiB", kib_f64 / memory::KIB_PER_GIB)
+    } else if kib_f64 >= memory::KIB_PER_MIB {
+        format!("{:.1} MiB", kib_f64 / memory::KIB_PER_MIB)
     } else {
         format!("{} KiB", kib)
     }
@@ -84,11 +81,8 @@ pub fn print_summary(profile: &JobProfile) {
 
         if let Some(ref filter) = profile.filter {
             println!("\nActive filters:");
-            if let Some(ref exclude) = filter.exclude_pattern {
-                println!("  • Exclude pattern: '{}'", exclude);
-            }
-            if let Some(ref include) = filter.include_pattern {
-                println!("  • Include pattern: '{}'", include);
+            for line in filter.display_patterns() {
+                println!("  • {}", line);
             }
         }
 

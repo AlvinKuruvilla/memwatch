@@ -1,33 +1,47 @@
-use crate::types::JobProfile;
+use crate::types::{memory, JobProfile};
 use anyhow::{Context, Result};
 use std::fs::File;
 use std::io::Write;
 
+/// Write filter metadata as CSV comment header
+fn write_filter_comment(
+    file: &mut File,
+    profile: &JobProfile,
+    include_stats: bool,
+) -> Result<()> {
+    if let Some(ref filter) = profile.filter {
+        write!(file, "# Filter: {}", filter.to_csv_comment())?;
+
+        if include_stats {
+            if let (Some(filtered_count), Some(filtered_rss)) =
+                (profile.filtered_process_count, profile.filtered_total_rss_kib) {
+                writeln!(file, " ({} processes filtered out, {} KiB total)",
+                    filtered_count, filtered_rss)?;
+            } else {
+                writeln!(file)?;
+            }
+        } else {
+            writeln!(file)?;
+            writeln!(file, "# Note: total_rss_kib and process_count both show all processes (unfiltered)")?;
+            writeln!(file, "# Filtering only affects the per-process CSV export and final summary display")?;
+        }
+    }
+    Ok(())
+}
+
 /// Export per-process peak RSS to CSV
 pub fn export_process_csv(profile: &JobProfile, path: &str) -> Result<()> {
     let mut file = File::create(path)
-        .context(format!("Failed to create CSV file: {}", path))?;
+        .context(format!("Failed to create per-process CSV file: {}", path))?;
 
-    // Write filter comment if filters were applied
-    if let Some(ref filter) = profile.filter {
-        if let (Some(filtered_count), Some(filtered_rss)) = (profile.filtered_process_count, profile.filtered_total_rss_kib) {
-            write!(file, "# Filter: ")?;
-            if let Some(ref exclude) = filter.exclude_pattern {
-                write!(file, "exclude='{}' ", exclude)?;
-            }
-            if let Some(ref include) = filter.include_pattern {
-                write!(file, "include='{}' ", include)?;
-            }
-            writeln!(file, "({} processes filtered out, {} KiB total)", filtered_count, filtered_rss)?;
-        }
-    }
+    write_filter_comment(&mut file, profile, true)?;
 
     // Write header
     writeln!(file, "pid,ppid,command,max_rss_kib,max_rss_mib,first_seen,last_seen")?;
 
     // Write each process (filter out processes with 0 RSS)
     for proc in profile.processes.iter().filter(|p| p.max_rss_kib > 0) {
-        let max_rss_mib = proc.max_rss_kib as f64 / 1024.0;
+        let max_rss_mib = proc.max_rss_kib as f64 / memory::KIB_PER_MIB;
         writeln!(
             file,
             "{},{},\"{}\",{},{:.2},{},{}",
@@ -52,26 +66,14 @@ pub fn export_timeline_csv(profile: &JobProfile, path: &str) -> Result<()> {
     let timeline = profile.timeline.as_ref()
         .context("Timeline data not available. This is a bug - timeline should be tracked when --timeline is used.")?;
 
-    // Write filter comment if filters were applied
-    if let Some(ref filter) = profile.filter {
-        write!(file, "# Filter: ")?;
-        if let Some(ref exclude) = filter.exclude_pattern {
-            write!(file, "exclude='{}' ", exclude)?;
-        }
-        if let Some(ref include) = filter.include_pattern {
-            write!(file, "include='{}' ", include)?;
-        }
-        writeln!(file)?;
-        writeln!(file, "# Note: total_rss_kib and process_count both show all processes (unfiltered)")?;
-        writeln!(file, "# Filtering only affects the per-process CSV export and final summary display")?;
-    }
+    write_filter_comment(&mut file, profile, false)?;
 
     // Write header
     writeln!(file, "timestamp,elapsed_seconds,total_rss_kib,total_rss_mib,process_count")?;
 
     // Write each timeline point
     for point in timeline {
-        let total_rss_mib = point.total_rss_kib as f64 / 1024.0;
+        let total_rss_mib = point.total_rss_kib as f64 / memory::KIB_PER_MIB;
         writeln!(
             file,
             "{},{:.3},{},{:.2},{}",

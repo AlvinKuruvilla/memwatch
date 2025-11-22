@@ -116,14 +116,14 @@ fn sample_job_tree(
     // Find all PIDs that belong to the job tree
     let job_pids = find_job_pids(root_pid, &ppid_map);
 
-    // Collect processes in the job
+    // Collect processes in the job (move out of HashMap to avoid cloning)
     let mut job_processes = Vec::new();
     let mut total_rss_kib = 0;
 
     for pid in job_pids {
-        if let Some(proc) = pid_map.get(&pid) {
+        if let Some(proc) = pid_map.remove(&pid) {
             total_rss_kib += proc.rss_kib;
-            job_processes.push(proc.clone());
+            job_processes.push(proc);
         }
     }
 

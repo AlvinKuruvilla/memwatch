@@ -1,0 +1,2 @@
+# Include examples directory in GitHub language statistics
+examples/** linguist-vendored=false

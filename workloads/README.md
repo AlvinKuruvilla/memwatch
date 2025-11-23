@@ -1,6 +1,6 @@
-# Memwatch Examples
+# Memwatch Workloads
 
-This directory contains example programs demonstrating memwatch's capabilities for profiling different types of workloads.
+This directory contains demonstration workloads showing memwatch's capabilities for profiling different types of programs.
 
 ## Quick Overview
 
@@ -18,7 +18,7 @@ A comprehensive multi-program example that simulates a realistic CI/CD build pip
 ### Quick Start
 
 ```bash
-cd examples/build_pipeline
+cd workloads/build_pipeline
 
 # Run the full pipeline
 memwatch run -- make
@@ -98,16 +98,16 @@ This is the primary use case - tracking memory across all MPI ranks:
 cargo build --release --example mpi_distributed_compute
 
 # Profile with memwatch
-memwatch run -- mpirun -n 4 target/release/examples/mpi_distributed_compute
+memwatch run -- mpirun -n 4 target/release/workloads/mpi_distributed_compute
 
 # With JSON output for automated analysis
-memwatch run --json -- mpirun -n 4 target/release/examples/mpi_distributed_compute
+memwatch run --json -- mpirun -n 4 target/release/workloads/mpi_distributed_compute
 
 # With CSV export for per-process breakdown
-memwatch run --csv mpi_processes.csv -- mpirun -n 4 target/release/examples/mpi_distributed_compute
+memwatch run --csv mpi_processes.csv -- mpirun -n 4 target/release/workloads/mpi_distributed_compute
 
 # With timeline export for plotting memory over time
-memwatch run --timeline mpi_timeline.csv -- mpirun -n 4 target/release/examples/mpi_distributed_compute
+memwatch run --timeline mpi_timeline.csv -- mpirun -n 4 target/release/workloads/mpi_distributed_compute
 ```
 
 ### What This Example Demonstrates

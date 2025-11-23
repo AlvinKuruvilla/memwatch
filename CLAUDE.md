@@ -84,7 +84,7 @@ src/
   csv_writer.rs      # CSV export (per-process and timeline)
   types.rs           # Shared structs (ProcessSample, JobSnapshot, TimelinePoint, etc.)
   main.rs            # Binary entry point
-examples/
+workloads/
   mpi_distributed_compute.rs  # MPI workload example (requires OpenMPI)
   README.md                   # Example documentation
 ```
@@ -282,11 +282,11 @@ Convert to human-readable IEC units only for display.
 
 ## Examples
 
-The `examples/` directory contains demonstration programs showing memwatch's capabilities for different workload types.
+The `workloads/` directory contains demonstration programs showing memwatch's capabilities for different workload types.
 
 ### MPI Distributed Computation Example
 
-**File**: `examples/mpi_distributed_compute.rs`
+**File**: `workloads/mpi_distributed_compute.rs`
 
 A realistic MPI example inspired by distributed zero-knowledge proof systems (specifically zeroasset2). Demonstrates memwatch's value for tracking memory across MPI process trees.
 
@@ -302,10 +302,10 @@ A realistic MPI example inspired by distributed zero-knowledge proof systems (sp
 cargo build --release --example mpi_distributed_compute
 
 # Run with 4 MPI processes
-mpirun -n 4 target/release/examples/mpi_distributed_compute
+mpirun -n 4 target/release/workloads/mpi_distributed_compute
 
 # Profile with memwatch
-memwatch run -- mpirun -n 4 target/release/examples/mpi_distributed_compute
+memwatch run -- mpirun -n 4 target/release/workloads/mpi_distributed_compute
 ```
 
 **What it demonstrates**:
@@ -321,7 +321,7 @@ memwatch run -- mpirun -n 4 target/release/examples/mpi_distributed_compute
 - Communication spikes (temporary buffers during MPI collectives)
 - Configurable problem size via `--size` argument
 
-See `examples/README.md` for detailed documentation.
+See `workloads/README.md` for detailed documentation.
 
 ## Code Quality Best Practices
 

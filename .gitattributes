@@ -1,2 +1,2 @@
-# Include examples directory in GitHub language statistics
-examples/** linguist-vendored=false
+# Include workloads directory in GitHub language statistics
+workloads/** linguist-vendored=false

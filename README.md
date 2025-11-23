@@ -367,11 +367,11 @@ print(result["max_total_rss_kib"])
 
 ## 📚 Examples
 
-The `examples/` directory contains realistic demonstration programs showing memwatch's capabilities for different workload types.
+The `workloads/` directory contains realistic demonstration programs showing memwatch's capabilities for different workload types.
 
 ### MPI Distributed Computation
 
-**Location**: `examples/mpi_distributed_compute.rs`
+**Location**: `workloads/mpi_distributed_compute.rs`
 
 A realistic MPI example inspired by distributed zero-knowledge proof systems (like [zeroasset2](https://github.com/privacy-scaling-explorations/zeroasset2)). This demonstrates memwatch's value for tracking memory across MPI process trees - a challenge where traditional profiling tools struggle.
 
@@ -408,7 +408,7 @@ Per-process peak RSS:
   PID 12349 (mpi_distributed_compute): 384.0 KiB
 ```
 
-**See** `examples/README.md` for detailed documentation, including:
+**See** `workloads/README.md` for detailed documentation, including:
 - Prerequisites (OpenMPI installation)
 - Memory scaling patterns
 - Comparison with traditional tools
